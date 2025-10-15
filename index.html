@@ -29,23 +29,48 @@
 const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
 let destination = null;
 let headingOffset = 0;
-let arrived = false; // ✅ 追加：到着判定用フラグ
 
-// ✅ 距離計算（2点間の緯度経度からメートル単位で距離を出す）
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // 地球の半径[m]
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) ** 2 +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // 距離[m]
+// ✅ センサー許可をリクエスト
+async function enableOrientation() {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    if (permission === 'granted') {
+      window.addEventListener("deviceorientation", e => {
+        if (e.alpha !== null) headingOffset = 360 - e.alpha;
+      });
+    } else {
+      alert("センサーアクセスが拒否されました。");
+    }
+  } else {
+    // 古いiOSやPC用
+    window.addEventListener("deviceorientation", e => {
+      if (e.alpha !== null) headingOffset = 360 - e.alpha;
+    });
+  }
 }
 
-// ✅ 方位角計算（既存）
+// ✅ 地名入力＆API呼び出し
+async function askDestination() {
+  const place = prompt("目的地の地名を入力してください（例：東京駅）");
+  if (!place) return;
+
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.results.length > 0) {
+    const loc = data.results[0].geometry.location;
+    destination = { lat: loc.lat, lon: loc.lng };
+    document.getElementById("info").innerText =
+      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n現在地を取得中...`;
+    startNavigation();
+  } else {
+    alert("場所が見つかりませんでした。");
+    askDestination();
+  }
+}
+
+// ✅ 方位角計算
 function getBearing(lat1, lon1, lat2, lon2) {
   const toRad = deg => deg * Math.PI / 180;
   const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
@@ -58,33 +83,19 @@ function getBearing(lat1, lon1, lat2, lon2) {
 // ✅ 現在地追跡
 function startNavigation() {
   navigator.geolocation.watchPosition(pos => {
-    if (arrived) return; // 既に到着していたら処理しない
-
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-
-    // --- 方位角と距離を計算 ---
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
-    const distance = getDistance(lat, lon, destination.lat, destination.lon);
-
-    // --- 到着判定 ---
-    if (distance < 50) { // ✅ 50m以内
-      arrived = true;
-      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
-      document.getElementById("arrow").style.display = "none"; // 矢印を消す
-      return;
-    }
-
-    // --- 通常更新 ---
     const correctedBearing = (bearing - headingOffset + 360) % 360;
+
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°`;
+      `現在地：${lat.toFixed(4)}, ${lon.toFixed(4)}\n目的地方向：${bearing.toFixed(1)}°\n端末向き補正：${headingOffset.toFixed(1)}°`;
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
 }
-  
+
 // ✅ スタートボタン設定
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
@@ -94,7 +105,3 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
-
-
-
-
