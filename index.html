@@ -1,99 +1,75 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（地名入力＋方位センサー+センサー許可）</title>
-<style>
-  body {
-    background: black;
-    color: lime;
-    font-family: monospace;
-    text-align: center;
-    margin-top: 10vh;
-  }
-  #arrow {
-    font-size: 5em;
-    transition: transform 0.5s linear;
-  }
-</style>
-</head>
 <body>
-  <body>
-  <h2>HUDナビ</h2>
-  <div id="arrow">⬆️</div>
-  <p id="info">目的地を設定してください。</p>
-  <button id="startBtn">▶️ ナビ開始</button>
+  <h2>HUDナビ デモ</h2>
+  <input id="destinationInput" type="text" placeholder="目的地を入力 (例: 東京駅)">
+  <button onclick="setDestination()">目的地設定</button>
+  <button onclick="enableSensors()">モーション許可</button>
 
-<script>
-const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
-let destination = null;
-let headingOffset = 0;
-let arrived = false; // ✅ 追加：到着判定用フラグ
+  <p id="status"></p>
+  <canvas id="arrowCanvas" width="300" height="300"></canvas>
 
-// ✅ 距離計算（2点間の緯度経度からメートル単位で距離を出す）
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // 地球の半径[m]
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) ** 2 +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // 距離[m]
-}
+  <script>
+    let destination = null;
+    let currentPosition = null;
 
-// ✅ 方位角計算（既存）
-function getBearing(lat1, lon1, lat2, lon2) {
-  const toRad = deg => deg * Math.PI / 180;
-  const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
-  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
-  const brng = Math.atan2(y, x);
-  return (brng * 180 / Math.PI + 360) % 360;
-}
+    async function setDestination() {
+      const place = document.getElementById("destinationInput").value;
+      if (!place) return alert("目的地を入力してください");
 
-// ✅ 現在地追跡
-function startNavigation() {
-  navigator.geolocation.watchPosition(pos => {
-    if (arrived) return; // 既に到着していたら処理しない
+      const apiKey =AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${apiKey}`;
 
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.results.length === 0) {
+        document.getElementById("status").textContent = "場所が見つかりません";
+        return;
+      }
 
-    // --- 方位角と距離を計算 ---
-    const bearing = getBearing(lat, lon, destination.lat, destination.lon);
-    const distance = getDistance(lat, lon, destination.lat, destination.lon);
-
-    // --- 到着判定 ---
-    if (distance < 50) { // ✅ 50m以内
-      arrived = true;
-      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
-      document.getElementById("arrow").style.display = "none"; // 矢印を消す
-      return;
+      destination = data.results[0].geometry.location;
+      document.getElementById("status").textContent = `${place} に設定しました`;
     }
 
-    // --- 通常更新 ---
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
-    document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
-    document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°`;
-  }, err => {
-    document.getElementById("info").innerText = "位置情報が取得できません。";
-  }, { enableHighAccuracy: true });
-}
-</script>
+    // 現在地を取得
+    navigator.geolocation.watchPosition((pos) => {
+      currentPosition = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      };
+      updateHUD();
+    });
 
-// ✅ スタートボタン設定
-document.getElementById("startBtn").addEventListener("click", async () => {
-  await enableOrientation();
-  askDestination();
-  document.getElementById("startBtn").style.display = "none";
-});
-</script>
+    function updateHUD() {
+      if (!destination || !currentPosition) return;
+
+      // 方向と距離を計算
+      const R = 6371000; // 地球の半径（m）
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const dLat = toRad(destination.lat - currentPosition.lat);
+      const dLng = toRad(destination.lng - currentPosition.lng);
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(currentPosition.lat)) *
+        Math.cos(toRad(destination.lat)) *
+        Math.sin(dLng / 2) ** 2;
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      document.getElementById("status").textContent =
+        `目的地まで約 ${Math.round(distance)}m`;
+    }
+
+    // iPhoneのモーション許可
+    async function enableSensors() {
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        const permission = await DeviceMotionEvent.requestPermission();
+        if (permission === "granted") {
+          alert("モーションセンサーが有効になりました");
+        }
+      } else {
+        alert("モーションセンサー対応デバイスで開いてください");
+      }
+    }
+  </script>
 </body>
-</html>
-
-
