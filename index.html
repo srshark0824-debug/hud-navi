@@ -83,7 +83,7 @@ function startNavigation() {
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
-
+}
   
 // ✅ スタートボタン設定
 document.getElementById("startBtn").addEventListener("click", async () => {
@@ -94,6 +94,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
