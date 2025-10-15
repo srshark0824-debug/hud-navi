@@ -1,75 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUDナビ（地名入力＋方位センサー対応）</title>
+<style>
+  body {
+    background: black;
+    color: rgb(0, 255, 251);
+    font-family: monospace;
+    text-align: center;
+    margin-top: 10vh;
+  }
+  #arrow {
+    font-size: 5em;
+    transition: transform 0.5s linear;
+  }
+</style>
+</head>
 <body>
-  <h2>HUDナビ デモ</h2>
-  <input id="destinationInput" type="text" placeholder="目的地を入力 (例: 東京駅)">
-  <button onclick="setDestination()">目的地設定</button>
-  <button onclick="enableSensors()">モーション許可</button>
+  <body>
+  <h2>HUDナビ（センサー許可）</h2>
+  <div id="arrow">⬆️</div>
+  <p id="info">目的地を設定してください。</p>
+  <button id="startBtn">▶️ ナビ開始</button>
 
-  <p id="status"></p>
-  <canvas id="arrowCanvas" width="300" height="300"></canvas>
+<script>
+const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
+let destination = null;
+let headingOffset = 0;
 
-  <script>
-    let destination = null;
-    let currentPosition = null;
-
-    async function setDestination() {
-      const place = document.getElementById("destinationInput").value;
-      if (!place) return alert("目的地を入力してください");
-
-      const apiKey =AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY;
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${apiKey}`;
-
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.results.length === 0) {
-        document.getElementById("status").textContent = "場所が見つかりません";
-        return;
-      }
-
-      destination = data.results[0].geometry.location;
-      document.getElementById("status").textContent = `${place} に設定しました`;
+// ✅ センサー許可をリクエスト
+async function enableOrientation() {
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    if (permission === 'granted') {
+      window.addEventListener("deviceorientation", e => {
+        if (e.alpha !== null) headingOffset = 360 - e.alpha;
+      });
+    } else {
+      alert("センサーアクセスが拒否されました。");
     }
-
-    // 現在地を取得
-    navigator.geolocation.watchPosition((pos) => {
-      currentPosition = {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
-      };
-      updateHUD();
+  } else {
+    // 古いiOSやPC用
+    window.addEventListener("deviceorientation", e => {
+      if (e.alpha !== null) headingOffset = 360 - e.alpha;
     });
+  }
+}
 
-    function updateHUD() {
-      if (!destination || !currentPosition) return;
+// ✅ 地名入力＆API呼び出し
+async function askDestination() {
+  const place = prompt("目的地の地名を入力してください（例：東京駅）");
+  if (!place) return;
 
-      // 方向と距離を計算
-      const R = 6371000; // 地球の半径（m）
-      const toRad = (deg) => (deg * Math.PI) / 180;
-      const dLat = toRad(destination.lat - currentPosition.lat);
-      const dLng = toRad(destination.lng - currentPosition.lng);
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
 
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(currentPosition.lat)) *
-        Math.cos(toRad(destination.lat)) *
-        Math.sin(dLng / 2) ** 2;
+  if (data.results.length > 0) {
+    const loc = data.results[0].geometry.location;
+    destination = { lat: loc.lat, lon: loc.lng };
+    document.getElementById("info").innerText =
+      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n現在地を取得中...`;
+    startNavigation();
+  } else {
+    alert("場所が見つかりませんでした。");
+    askDestination();
+  }
+}
 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
+// ✅ 方位角計算
+function getBearing(lat1, lon1, lat2, lon2) {
+  const toRad = deg => deg * Math.PI / 180;
+  const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+  const brng = Math.atan2(y, x);
+  return (brng * 180 / Math.PI + 360) % 360;
+}
 
-      document.getElementById("status").textContent =
-        `目的地まで約 ${Math.round(distance)}m`;
-    }
+// ✅ 現在地追跡
+function startNavigation() {
+  navigator.geolocation.watchPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const bearing = getBearing(lat, lon, destination.lat, destination.lon);
+    const correctedBearing = (bearing - headingOffset + 360) % 360;
 
-    // iPhoneのモーション許可
-    async function enableSensors() {
-      if (typeof DeviceMotionEvent.requestPermission === "function") {
-        const permission = await DeviceMotionEvent.requestPermission();
-        if (permission === "granted") {
-          alert("モーションセンサーが有効になりました");
-        }
-      } else {
-        alert("モーションセンサー対応デバイスで開いてください");
-      }
-    }
-  </script>
+    document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
+    document.getElementById("info").innerText =
+      `現在地：${lat.toFixed(4)}, ${lon.toFixed(4)}\n目的地方向：${bearing.toFixed(1)}°\n端末向き補正：${headingOffset.toFixed(1)}°`;
+  }, err => {
+    document.getElementById("info").innerText = "位置情報が取得できません。";
+  }, { enableHighAccuracy: true });
+}
+
+// ✅ スタートボタン設定
+document.getElementById("startBtn").addEventListener("click", async () => {
+  await enableOrientation();
+  askDestination();
+  document.getElementById("startBtn").style.display = "none";
+});
+</script>
 </body>
+</html>
