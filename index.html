@@ -28,6 +28,7 @@
 const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
 let destination = null;
 let headingOffset = 0;
+let arrived = false; // ✅ 追加：到着判定用フラグ
 
 // ✅ センサー許可をリクエスト
 async function enableOrientation() {
@@ -68,9 +69,7 @@ async function askDestination() {
     askDestination();
   }
 }
-
-  let arrived = false; // ✅ 追加：到着判定用フラグ
-
+  
 // ✅ 距離計算（2点間の緯度経度からメートル単位で距離を出す）
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // 地球の半径[m]
@@ -146,6 +145,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
