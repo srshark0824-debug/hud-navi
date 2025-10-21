@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ1</title>
+<title>HUDナビ（方位安定化＋精度検証）</title>
 <style>
   body {
     background: black;
@@ -20,9 +20,9 @@
     margin: 0 auto;
     background: url('arrow.png') no-repeat center;
     background-size: contain;
-    transform-origin: 50% 60%; /* 回転の支点を少し下に設定 */
+    transform-origin: 50% 60%;
     transition: transform 0.3s linear;
-    filter: drop-shadow(0 0 10px red); /* 光の演出を追加 */
+    filter: drop-shadow(0 0 10px red);
   }
 
   #info {
@@ -32,9 +32,9 @@
 </head>
 <body>
   <h2>HUDナビ</h2>
-  <div id="arrow"></div> <!-- 矢印を画像として表示 -->
+  <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
-  <button id="startBtn"▶️ ナビ開始</button>
+  <button id="startBtn">▶️ ナビ開始</button>
 
 <script>
 const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
@@ -42,15 +42,16 @@ let destination = null;
 let headingOffset = 0;
 let arrived = false;
 
-let headingHistory = []; //過去の方位値を保持して平均化
+// ✅【追加】方位安定化用バッファ
+let headingHistory = []; // 過去の方位値を保持して平均化
 
 // ✅ センサー許可をリクエスト
 async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
     const permission = await DeviceOrientationEvent.requestPermission();
     if (permission === 'granted') {
-    
-  // ✅【変更】方位の揺れを平滑化（5件平均）
+
+      // ✅【変更】方位の揺れを平滑化（5件平均）
       window.addEventListener("deviceorientation", e => {
         if (e.alpha !== null) {
           const newHeading = 360 - e.alpha;
@@ -60,12 +61,12 @@ async function enableOrientation() {
           headingOffset = avgHeading;
         }
       });
-      
+
     } else {
       alert("センサーアクセスが拒否されました。");
     }
   } else {
-   // ✅【変更】iPhone以外でも動作するように調整
+    // ✅【変更】iPhone以外でも動作するように調整
     window.addEventListener("deviceorientation", e => {
       if (e.alpha !== null) {
         const newHeading = 360 - e.alpha;
@@ -78,7 +79,7 @@ async function enableOrientation() {
   }
 }
 
-// ✅ 地名入力＆API呼び出し
+// ✅ 地名入力＆API呼び出し（変更なし）
 async function askDestination() {
   const place = prompt("目的地の地名を入力してください（例：東京駅）");
   if (!place) return;
@@ -99,7 +100,7 @@ async function askDestination() {
   }
 }
 
-// ✅ 距離計算
+// ✅ 距離計算（変更なし）
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;
@@ -113,7 +114,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ✅ 方位角計算
+// ✅ 方位角計算（変更なし）
 function getBearing(lat1, lon1, lat2, lon2) {
   const toRad = deg => deg * Math.PI / 180;
   const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
@@ -136,10 +137,11 @@ function startNavigation() {
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
     const correctedBearing = (bearing - headingOffset + 360) % 360;
 
-    // ✅【追加】GPS精度の評価
+       // ✅【追加】GPS精度の評価
     let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
+
 
     // ✅【変更】到着判定に精度条件を追加
     if (distance < 50 && acc < 30) {
@@ -149,7 +151,7 @@ function startNavigation() {
       return;
     }
 
-    // ✅【変更】表示内容を詳細化
+   // ✅【変更】表示内容を詳細化
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
       `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${gpsStatus}`;
@@ -158,7 +160,7 @@ function startNavigation() {
   }, { enableHighAccuracy: true });
 }
 
-// ✅ ボタン動作設定
+// ✅ ボタン動作（変更なし）
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
   askDestination();
@@ -167,3 +169,8 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
+
+  
+
+
