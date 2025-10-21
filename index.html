@@ -42,20 +42,38 @@ let destination = null;
 let headingOffset = 0;
 let arrived = false;
 
+let headingHistory = []; //過去の方位値を保持して平均化
+
 // ✅ センサー許可をリクエスト
 async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
     const permission = await DeviceOrientationEvent.requestPermission();
     if (permission === 'granted') {
+    
+  // ✅【変更】方位の揺れを平滑化（5件平均）
       window.addEventListener("deviceorientation", e => {
-        if (e.alpha !== null) headingOffset = 360 - e.alpha;
+        if (e.alpha !== null) {
+          const newHeading = 360 - e.alpha;
+          headingHistory.push(newHeading);
+          if (headingHistory.length > 5) headingHistory.shift();
+          const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+          headingOffset = avgHeading;
+        }
       });
+      
     } else {
       alert("センサーアクセスが拒否されました。");
     }
   } else {
+   // ✅【変更】iPhone以外でも動作するように調整
     window.addEventListener("deviceorientation", e => {
-      if (e.alpha !== null) headingOffset = 360 - e.alpha;
+      if (e.alpha !== null) {
+        const newHeading = 360 - e.alpha;
+        headingHistory.push(newHeading);
+        if (headingHistory.length > 5) headingHistory.shift();
+        const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+        headingOffset = avgHeading;
+      }
     });
   }
 }
@@ -105,25 +123,25 @@ function getBearing(lat1, lon1, lat2, lon2) {
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
-// ✅ ナビゲーション開始
+// ✅【変更】ナビゲーション関数：GPS精度の表示を追加
 function startNavigation() {
   navigator.geolocation.watchPosition(pos => {
     if (arrived) return;
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-     const acc = pos.coords.accuracy; // ✅ 位置精度（m）
+    const acc = pos.coords.accuracy; // ✅ GPS精度[m]
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
     const correctedBearing = (bearing - headingOffset + 360) % 360;
 
-     // ✅ GPSの信頼性チェック
-  let gpsStatus = "良好";
-  if (acc > 30) gpsStatus = "低精度";
-  if (acc > 100) gpsStatus = "非常に不安定";
-    
-    // 到着判定
+    // ✅【追加】GPS精度の評価
+    let gpsStatus = "良好";
+    if (acc > 30) gpsStatus = "低精度";
+    if (acc > 100) gpsStatus = "非常に不安定";
+
+    // ✅【変更】到着判定に精度条件を追加
     if (distance < 50 && acc < 30) {
       arrived = true;
       document.getElementById("info").innerText = "🎉 目的地に到着しました！";
@@ -131,32 +149,13 @@ function startNavigation() {
       return;
     }
 
-    // 方位更新
-    
+    // ✅【変更】表示内容を詳細化
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°`;
+      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${acc.toFixed(1)}m（${gpsStatus}）`;
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
-
-  let headingOffset = 0;
-let headingHistory = []; // 過去の値を記録
-
-// ✅ 方位センサー安定化
-window.addEventListener("deviceorientation", e => {
-  if (e.alpha !== null) {
-    const newHeading = 360 - e.alpha;
-
-    // 最新の値を保存（5件分の移動平均）
-    headingHistory.push(newHeading);
-    if (headingHistory.length > 5) headingHistory.shift();
-
-    // 平均値で滑らかに補正
-    const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-    headingOffset = avgHeading;
-  }
-});
 }
 
 // ✅ ボタン動作設定
