@@ -112,10 +112,16 @@ function startNavigation() {
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
+     const acc = pos.coords.accuracy; // ✅ 位置精度（m）
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
 
+     // ✅ GPSの信頼性チェック
+  let gpsStatus = "良好";
+  if (acc > 30) gpsStatus = "低精度";
+  if (acc > 100) gpsStatus = "非常に不安定";
+    
     // 到着判定
     if (distance < 50) {
       arrived = true;
@@ -132,6 +138,24 @@ function startNavigation() {
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
+
+  let headingOffset = 0;
+let headingHistory = []; // 過去の値を記録
+
+// ✅ 方位センサー安定化
+window.addEventListener("deviceorientation", e => {
+  if (e.alpha !== null) {
+    const newHeading = 360 - e.alpha;
+
+    // 最新の値を保存（5件分の移動平均）
+    headingHistory.push(newHeading);
+    if (headingHistory.length > 5) headingHistory.shift();
+
+    // 平均値で滑らかに補正
+    const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+    headingOffset = avgHeading;
+  }
+});
 }
 
 // ✅ ボタン動作設定
@@ -143,6 +167,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
