@@ -137,9 +137,9 @@ function startNavigation() {
     const correctedBearing = (bearing - headingOffset + 360) % 360;
 
     // ✅【追加】GPS精度の評価
-    let gpsStatus = "○";
+    let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
-    if (acc > 100) gpsStatus = "×";
+    if (acc > 100) gpsStatus = "✖";
 
     // ✅【変更】到着判定に精度条件を追加
     if (distance < 50 && acc < 30) {
@@ -152,7 +152,7 @@ function startNavigation() {
     // ✅【変更】表示内容を詳細化
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：（${gpsStatus}）`;
+      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${gpsStatus}`;
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
@@ -167,6 +167,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
