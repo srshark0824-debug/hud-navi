@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（）</title>
+<title>HUDナビ（経路案内対応版）</title>
 <style>
   body {
     background: black;
@@ -14,74 +13,67 @@
     margin-top: 10vh;
   }
 
-  /* ▼ 矢印画像のスタイル */
   #arrow {
     width: 150px;
     height: 150px;
     margin: 0 auto;
     background: url('arrow.png') no-repeat center;
     background-size: contain;
-    transform-origin: 50% 60%; /* 回転の支点を少し下に設定 */
+    transform-origin: 50% 60%;
     transition: transform 0.3s linear;
-    filter: drop-shadow(0 0 10px red); /* 光の演出を追加 */
+    filter: drop-shadow(0 0 10px red);
   }
 
   #info {
     margin-top: 20px;
+    white-space: pre-line;
   }
 </style>
 </head>
 <body>
   <h2>HUDナビ</h2>
-  <div id="arrow"></div> <!-- 矢印を画像として表示 -->
+  <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
   <button id="startBtn">▶️ ナビ開始</button>
 
 <script>
-const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
+const API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // 🔒実運用時は安全な場所に保管
 let destination = null;
+let routeSteps = [];  // ✅ 経路情報を保存
+let currentStepIndex = 0;
 let headingOffset = 0;
 let arrived = false;
+let headingHistory = [];
 
-let headingHistory = []; //過去の方位値を保持して平均化
-
-// ✅ センサー許可をリクエスト
+// ✅ センサー許可と方位の安定化（前回と同様）
 async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
     const permission = await DeviceOrientationEvent.requestPermission();
     if (permission === 'granted') {
-    
-  // ✅【変更】方位の揺れを平滑化（5件平均）
       window.addEventListener("deviceorientation", e => {
         if (e.alpha !== null) {
           const newHeading = 360 - e.alpha;
           headingHistory.push(newHeading);
           if (headingHistory.length > 5) headingHistory.shift();
-          const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-          headingOffset = avgHeading;
+          headingOffset = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
         }
       });
-      
-    } else {
-      alert("センサーアクセスが拒否されました。");
     }
   } else {
-   // ✅【変更】iPhone以外でも動作するように調整
     window.addEventListener("deviceorientation", e => {
       if (e.alpha !== null) {
         const newHeading = 360 - e.alpha;
         headingHistory.push(newHeading);
         if (headingHistory.length > 5) headingHistory.shift();
-        const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-        headingOffset = avgHeading;
+        headingOffset = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
       }
     });
   }
 }
 
-// ✅ 地名入力＆API呼び出し
+// ✅ 地名入力 → 座標取得
 async function askDestination() {
-  const place = prompt("目的地の地名を入力してください（例：東京駅）");
+  const place = prompt("目的地の地名を入力してください（例：京都駅）");
   if (!place) return;
 
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
@@ -92,12 +84,45 @@ async function askDestination() {
     const loc = data.results[0].geometry.location;
     destination = { lat: loc.lat, lon: loc.lng };
     document.getElementById("info").innerText =
-      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n現在地を取得中...`;
-    startNavigation();
+      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n経路を取得中...`;
+    await fetchRoute(); // ✅ 経路取得
   } else {
     alert("場所が見つかりませんでした。");
-    askDestination();
   }
+}
+
+// ✅【新規追加】Google Directions APIから経路を取得
+async function fetchRoute() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+      const destinationStr = `${destination.lat},${destination.lon}`;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destinationStr}&mode=walking&key=${API_KEY}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.routes && data.routes.length > 0) {
+        // ✅ 最初のルートを取得
+        routeSteps = data.routes[0].legs[0].steps.map(step => ({
+          lat: step.end_location.lat,
+          lon: step.end_location.lng,
+          instruction: step.html_instructions.replace(/<[^>]+>/g, '') // HTML除去
+        }));
+
+        document.getElementById("info").innerText =
+          `経路を取得しました（全${routeSteps.length}区間）\nナビを開始します...`;
+        startNavigation();
+        resolve();
+      } else {
+        alert("経路が取得できませんでした。");
+        reject();
+      }
+    }, err => {
+      alert("現在地が取得できません。");
+      reject();
+    });
+  });
 }
 
 // ✅ 距離計算
@@ -124,42 +149,42 @@ function getBearing(lat1, lon1, lat2, lon2) {
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
-// ✅【変更】ナビゲーション関数：GPS精度の表示を追加
+// ✅【変更】経路ステップに沿ってナビゲーション
 function startNavigation() {
   navigator.geolocation.watchPosition(pos => {
     if (arrived) return;
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    const acc = pos.coords.accuracy; // ✅ GPS精度[m]
-
-    const bearing = getBearing(lat, lon, destination.lat, destination.lon);
-    const distance = getDistance(lat, lon, destination.lat, destination.lon);
+    const acc = pos.coords.accuracy;
+    const currentStep = routeSteps[currentStepIndex];
+    const distance = getDistance(lat, lon, currentStep.lat, currentStep.lon);
+    const bearing = getBearing(lat, lon, currentStep.lat, currentStep.lon);
     const correctedBearing = (bearing - headingOffset + 360) % 360;
 
-    // ✅【追加】GPS精度の評価
-    let gpsStatus = "〇";
-    if (acc > 30) gpsStatus = "△";
-    if (acc > 100) gpsStatus = "✖";
+    // ✅ 距離が近い場合 → 次のステップへ進む
+    if (distance < 30 && currentStepIndex < routeSteps.length - 1) {
+      currentStepIndex++;
+    }
 
-    // ✅【変更】到着判定に精度条件を追加
-    if (distance < 50 && acc < 30) {
+    // ✅ すべて完了
+    if (currentStepIndex >= routeSteps.length - 1 && distance < 30) {
       arrived = true;
-      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
       document.getElementById("arrow").style.display = "none";
+      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
       return;
     }
 
-    // ✅【変更】表示内容を詳細化
+    // ✅ 表示更新
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${gpsStatus}`;
+      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\n${routeSteps[currentStepIndex].instruction}\nGPS精度：${acc.toFixed(1)}m`;
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
 }
 
-// ✅ ボタン動作設定
+// ✅ ボタン
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
   askDestination();
