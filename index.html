@@ -116,6 +116,7 @@ function startNavigation() {
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
+    const correctedBearing = (bearing - headingOffset + 360) % 360;
 
      // ✅ GPSの信頼性チェック
   let gpsStatus = "良好";
@@ -131,7 +132,7 @@ function startNavigation() {
     }
 
     // 方位更新
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
+    
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
       `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°`;
@@ -167,6 +168,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
