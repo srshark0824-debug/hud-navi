@@ -123,7 +123,7 @@ function startNavigation() {
   if (acc > 100) gpsStatus = "非常に不安定";
     
     // 到着判定
-    if (distance < 50) {
+    if (distance < 50 && acc < 30) {
       arrived = true;
       document.getElementById("info").innerText = "🎉 目的地に到着しました！";
       document.getElementById("arrow").style.display = "none";
@@ -167,6 +167,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
