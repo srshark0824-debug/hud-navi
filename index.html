@@ -130,16 +130,16 @@ function startNavigation() {
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    const acc = pos.coords.accuracy; // ✅ GPS精度[m]
+    //const acc = pos.coords.accuracy; // ✅ GPS精度[m]
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
     const correctedBearing = (bearing - headingOffset + 360) % 360;
 
     // ✅【追加】GPS精度の評価
-    let gpsStatus = "良好";
-    if (acc > 30) gpsStatus = "低精度";
-    if (acc > 100) gpsStatus = "非常に不安定";
+    let gpsStatus = "○";
+    if (acc > 30) gpsStatus = "△";
+    if (acc > 100) gpsStatus = "×";
 
     // ✅【変更】到着判定に精度条件を追加
     if (distance < 50 && acc < 30) {
@@ -167,6 +167,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
 
 
