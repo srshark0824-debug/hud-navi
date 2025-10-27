@@ -69,7 +69,8 @@ async function enableOrientation() {
     // ✅【変更】iPhone以外でも動作するように調整
     window.addEventListener("deviceorientation", e => {
       if (e.alpha !== null) {
-        const newHeading = 360 - e.alpha;
+        + const newHeading = e.alpha;
+
         headingHistory.push(newHeading);
         if (headingHistory.length > 5) headingHistory.shift();
         const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
@@ -135,7 +136,8 @@ function startNavigation() {
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
+  + const correctedBearing = (bearing + headingOffset + 360) % 360;
+
 
        // ✅【追加】GPS精度の評価
     let gpsStatus = "〇";
@@ -144,7 +146,7 @@ function startNavigation() {
 
 
     // ✅【変更】到着判定に精度条件を追加
-    if (distance < 50 && acc < 30) {
+    if (distance < 70 && acc < 30) {
       arrived = true;
       document.getElementById("info").innerText = "🎉 目的地に到着しました！";
       document.getElementById("arrow").style.display = "none";
@@ -172,6 +174,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 
   
+
 
 
 
