@@ -31,7 +31,7 @@
 </style>
 </head>
 <body>
-  <h2>HUDナビ1</h2>
+  <h2>HUDナビ</h2>
   <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
   <button id="startBtn">▶️ ナビ開始</button>
@@ -69,7 +69,7 @@ async function enableOrientation() {
     // ✅【変更】iPhone以外でも動作するように調整
     window.addEventListener("deviceorientation", e => {
       if (e.alpha !== null) {
-         const newHeading = 360 - e.alpha;
+         const newHeading = e.alpha;
 
         headingHistory.push(newHeading);
         if (headingHistory.length > 5) headingHistory.shift();
@@ -137,7 +137,7 @@ function startNavigation() {
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
     const correctedDistance = distance * 0.98; // 軽く補正
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
+    const correctedBearing = (bearing + headingOffset + 360) % 360;
 
 
        // ✅【追加】GPS精度の評価
@@ -175,6 +175,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 
   
+
 
 
 
