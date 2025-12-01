@@ -87,7 +87,7 @@ async function enableOrientation() {
 //  地名検索
 // ==============================
 async function askDestination() {
-  const place = prompt("目的地の地名を入力してください（例：京都駅）");
+  const place = prompt("目的地の地名を入力してください（例：東京駅）");
   if (!place) return;
 
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
@@ -186,3 +186,4 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
