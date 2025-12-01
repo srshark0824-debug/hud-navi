@@ -67,16 +67,18 @@ async function enableOrientation() {
     }
   } else {
     // ✅【変更】iPhone以外でも動作するように調整
-    window.addEventListener("deviceorientation", e => {
-      if (e.alpha !== null) {
-         const newHeading = e.alpha;
+let headingOffset = 0;
 
-        headingHistory.push(newHeading);
-        if (headingHistory.length > 5) headingHistory.shift();
-        const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-        headingOffset = avgHeading;
-      }
-    });
+window.addEventListener("deviceorientation", (e) => {
+  if (e.webkitCompassHeading !== undefined) {
+    // iPhone
+    headingOffset = e.webkitCompassHeading; // 磁北基準
+  } else if (e.alpha !== null) {
+    // Android
+    headingOffset = 360 - e.alpha; // 座標の仕様上反転が必要
+  }
+});
+
   }
 }
 
@@ -175,6 +177,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 
   
+
 
 
 
