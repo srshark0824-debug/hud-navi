@@ -94,11 +94,10 @@ async function inputDestination() {
     const result = data.results[0];
 
     // 位置確認ダイアログ
-    const ok = confirm(`「${result.formatted_address}」でよろしいですか？`);
-    if (!ok) continue;
-
+    + const ok = confirm(`「${place}（推定：${result.formatted_address}）」でよろしいですか？`);
+      if (!ok) continue;
     waypoints.push({
-      name: result.formatted_address,
+      name: place,   
       lat: result.geometry.location.lat,
       lon: result.geometry.location.lng
     });
@@ -205,5 +204,6 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
