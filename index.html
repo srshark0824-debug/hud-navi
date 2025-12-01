@@ -137,7 +137,7 @@ function startNavigation() {
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
     const distance = getDistance(lat, lon, destination.lat, destination.lon);
     const correctedDistance = distance * 0.98; // 軽く補正
-    const correctedBearing = (bearing + headingOffset + 360) % 360;
+    const correctedBearing = (bearing - headingOffset + 360) % 360;
 
 
        // ✅【追加】GPS精度の評価
@@ -175,6 +175,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 
   
+
 
 
 
