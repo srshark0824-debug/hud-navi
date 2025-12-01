@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（方位安定化＋精度検証）</title>
+<title>HUDナビ（完全安定版）</title>
 <style>
   body {
     background: black;
@@ -13,7 +13,6 @@
     margin-top: 10vh;
   }
 
-  /* ▼ 矢印画像のスタイル */
   #arrow {
     width: 150px;
     height: 150px;
@@ -21,7 +20,7 @@
     background: url('arrow.png') no-repeat center;
     background-size: contain;
     transform-origin: 50% 60%;
-    transition: transform 0.3s linear;
+    transition: transform 0.2s linear;
     filter: drop-shadow(0 0 10px red);
   }
 
@@ -31,162 +30,164 @@
 </style>
 </head>
 <body>
-  <h2>HUDナビ</h2>
-  <div id="arrow"></div>
-  <p id="info">目的地を設定してください。</p>
-  <button id="startBtn">▶️ ナビ開始</button>
+
+<h2>HUDナビ</h2>
+<div id="arrow"></div>
+<p id="info">目的地を設定してください。</p>
+<button id="startBtn">▶️ ナビ開始</button>
 
 <script>
-const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
+const API_KEY = "YOUR_API_KEY"; // ←あなたのキーに変更
 let destination = null;
-let headingOffset = 0;
 let arrived = false;
 
-// ✅【追加】方位安定化用バッファ
-let headingHistory = []; // 過去の方位値を保持して平均化
+// 方位センサー用
+let heading = 0;
+let headingHistory = [];
+const declination = 7; // 日本の磁偏角（東偏約7°）
 
-// ✅ センサー許可をリクエスト
+// 距離平滑化用
+let distanceHistory = [];
+
+// ===============================
+//  1. 方位センサーの許可取得
+// ===============================
 async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === 'function') {
     const permission = await DeviceOrientationEvent.requestPermission();
-    if (permission === 'granted') {
-
-      // ✅【変更】方位の揺れを平滑化（5件平均）
-      window.addEventListener("deviceorientation", e => {
-        if (e.alpha !== null) {
-          const newHeading = 360 - e.alpha;
-          headingHistory.push(newHeading);
-          if (headingHistory.length > 5) headingHistory.shift();
-          const avgHeading = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-          headingOffset = avgHeading;
-        }
-      });
-
-    } else {
-      alert("センサーアクセスが拒否されました。");
+    if (permission !== "granted") {
+      alert("センサーアクセスが拒否されました");
+      return;
     }
-  } else {
-    // ✅【変更】iPhone以外でも動作するように調整
-let headingOffset = 0;
-
-window.addEventListener("deviceorientation", (e) => {
-  if (e.webkitCompassHeading !== undefined) {
-    // iPhone
-    headingOffset = e.webkitCompassHeading; // 磁北基準
-  } else if (e.alpha !== null) {
-    // Android
-    headingOffset = 360 - e.alpha; // 座標の仕様上反転が必要
   }
-});
 
-  }
+  // iPhone / Android 両対応
+  window.addEventListener("deviceorientation", e => {
+    let rawHeading = null;
+
+    if (e.webkitCompassHeading !== undefined) {
+      // iPhoneはコンパス方向がそのまま得られる
+      rawHeading = e.webkitCompassHeading;
+    } else if (e.alpha !== null) {
+      // Androidは座標系が逆なので変換
+      rawHeading = (360 - e.alpha);
+    }
+
+    if (rawHeading != null) {
+      // 磁北 → 真北補正（日本）
+      rawHeading = (rawHeading + declination + 360) % 360;
+
+      // 5点移動平均で平滑化
+      headingHistory.push(rawHeading);
+      if (headingHistory.length > 5) headingHistory.shift();
+      heading = headingHistory.reduce((a, b) => a + b) / headingHistory.length;
+    }
+  });
 }
 
-// ✅ 地名入力＆API呼び出し（変更なし）
+// ===============================
+//  2. 地名入力 → Google API
+// ===============================
 async function askDestination() {
-  const place = prompt("目的地の地名を入力してください          (例：東京駅)");
+  const place = prompt("目的地の地名を入力してください（例：京都駅）");
   if (!place) return;
 
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
   const res = await fetch(url);
   const data = await res.json();
 
-  if (data.results.length > 0) {
+  if (data.results?.length > 0) {
     const loc = data.results[0].geometry.location;
     destination = { lat: loc.lat, lon: loc.lng };
     document.getElementById("info").innerText =
-      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n現在地を取得中...`;
+      `目的地：${place}\n緯度:${loc.lat.toFixed(4)} 経度:${loc.lng.toFixed(4)}\nGPS取得待ち...`;
     startNavigation();
   } else {
-    alert("場所が見つかりませんでした。");
+    alert("場所が見つかりませんでした");
     askDestination();
   }
 }
 
-// ✅ 距離計算（変更なし）
+// ===============================
+//  3. 距離計算
+// ===============================
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) ** 2 +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const toRad = d => d * Math.PI / 180;
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+  const a = Math.sin(Δφ/2)**2 +
+            Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// ✅ 方位角計算（変更なし）
+// ===============================
+//  4. 方位角計算
+// ===============================
 function getBearing(lat1, lon1, lat2, lon2) {
-  const toRad = deg => deg * Math.PI / 180;
+  const toRad = d => d * Math.PI / 180;
   const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
   const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
             Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
-  const brng = Math.atan2(y, x);
-  return (brng * 180 / Math.PI + 360) % 360;
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-// ✅【変更】ナビゲーション関数：GPS精度の表示を追加
+// ===============================
+//  5. ナビ開始（GPS追跡）
+// ===============================
 function startNavigation() {
   navigator.geolocation.watchPosition(pos => {
     if (arrived) return;
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    const acc = pos.coords.accuracy; // ✅ GPS精度[m]
+    const acc = pos.coords.accuracy;
 
     const bearing = getBearing(lat, lon, destination.lat, destination.lon);
-    const distance = getDistance(lat, lon, destination.lat, destination.lon);
-    const correctedDistance = distance * 0.98; // 軽く補正
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
+    let distance = getDistance(lat, lon, destination.lat, destination.lon);
 
+    // GPS精度が悪い時は距離更新しない
+    if (acc < 50) {
+      distanceHistory.push(distance);
+      if (distanceHistory.length > 3) distanceHistory.shift();
+      distance = distanceHistory.reduce((a, b) => a + b) / distanceHistory.length;
+    }
 
-       // ✅【追加】GPS精度の評価
-    let gpsStatus = "〇";
-    if (acc > 30) gpsStatus = "△";
-    if (acc > 100) gpsStatus = "✖";
+    // ★ ここが最重要：矢印の向き補正
+    const correctedBearing = (bearing - heading + 360) % 360;
 
-
-    // ✅【変更】到着判定に精度条件を追加
+    // 到着判定（精度も考慮）
     if (distance < 50 && acc < 30) {
       arrived = true;
-      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
       document.getElementById("arrow").style.display = "none";
+      document.getElementById("info").innerText = "🎉 目的地に到着しました";
       return;
     }
 
-   // ✅【変更】表示内容を詳細化
-    document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
+    document.getElementById("arrow").style.transform =
+      `rotate(${correctedBearing}deg)`;
+
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${gpsStatus}`;
+      `距離：約${distance.toFixed(1)}m\n` +
+      `方位：${bearing.toFixed(1)}°\n` +
+      `端末向き：${heading.toFixed(1)}°\n` +
+      `GPS精度：${acc.toFixed(1)}m`;
   }, err => {
-    document.getElementById("info").innerText = "位置情報が取得できません。";
-  }, { enableHighAccuracy: true });
+    document.getElementById("info").innerText = "GPSが取得できません";
+  }, { enableHighAccuracy: true, maximumAge: 0 });
 }
 
-// ✅ ボタン動作（変更なし）
+// ===============================
+//  6. スタートボタン
+// ===============================
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
   askDestination();
   document.getElementById("startBtn").style.display = "none";
 });
 </script>
+
 </body>
 </html>
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
