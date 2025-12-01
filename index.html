@@ -86,26 +86,56 @@ async function enableOrientation() {
 // ==============================
 //  地名検索
 // ==============================
+// 🔥 複数の目的地を取得して配列に入れる
 async function askDestination() {
-  const place = prompt("目的地の地名を入力してください（例：東京駅）");
-  if (!place) return;
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
+  // 目的地入力のループ
+  while (true) {
+    let place = prompt(`目的地 ${destinations.length + 1} を入力してください（例：京都駅）`);
+    if (!place) break;
 
-  if (data.results.length > 0) {
-    const loc = data.results[0].geometry.location;
-    destination = { lat: loc.lat, lon: loc.lng };
+    // --- Google APIで検索 ---
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-    document.getElementById("info").innerText =
-      `目的地：${place}\n(${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})\n現在地を取得中...`;
+    if (data.results.length === 0) {
+      alert("場所が見つかりませんでした。別の名称で入力してください。");
+      continue; // 再入力へ戻る
+    }
 
-    startNavigation();
-  } else {
-    alert("場所が見つかりませんでした。");
-    askDestination();
+    const result = data.results[0];
+    const loc = result.geometry.location;
+    const officialName = result.formatted_address;
+
+    // --- 正式名称で確認 ---
+    const ok = confirm(`「${officialName}」でよろしいですか？`);
+    if (!ok) continue;  // 再入力へ戻る
+
+    // --- 配列に追加 ---
+    destinations.push({
+      name: officialName,
+      lat: loc.lat,
+      lon: loc.lng
+    });
+
+    // --- 次の目的地入力確認 ---
+    const addMore = confirm("次の目的地を追加しますか？（はい＝追加 / いいえ＝ナビ開始）");
+    if (!addMore) break;
   }
+
+  if (destinations.length === 0) {
+    alert("目的地が設定されていません。");
+    return;
+  }
+
+  // ナビ開始
+  document.getElementById("info").innerText =
+    `目的地 1：${destinations[0].name}\n現在地を取得中...`;
+
+  startNavigation();
+}
+
 }
 
 // ==============================
@@ -143,31 +173,48 @@ function startNavigation() {
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    const acc = pos.coords.accuracy;  // GPS精度[m]
+    const acc = pos.coords.accuracy;
 
-    const bearing = getBearing(lat, lon, destination.lat, destination.lon);
-    const distance = getDistance(lat, lon, destination.lat, destination.lon);
+    // --- 現在のターゲット地点 ---
+    const target = destinations[currentIndex];
 
-    // ▼ 補正（目的地方向 − 端末の向き）
-    const correctedBearing = (bearing - headingOffset + 360) % 360;
+    const bearing = getBearing(lat, lon, target.lat, target.lon);
+    const distance = getDistance(lat, lon, target.lat, target.lon);
+    const correctedBearing = (bearing + headingOffset + 360) % 360;
 
-    // ▼ GPS精度の表示（変更せず）
+    // --- GPS精度表示 ---
     let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
 
-    // ▼ 到着判定
+    // --- 到着判定（次の目的地へ進む） ---
     if (distance < 50 && acc < 30) {
-      arrived = true;
-      document.getElementById("info").innerText = "🎉 目的地に到着しました！";
-      document.getElementById("arrow").style.display = "none";
+
+      // 最終目的地か？
+      if (currentIndex === destinations.length - 1) {
+        arrived = true;
+        document.getElementById("info").innerText = "🎉 全ての目的地に到着しました！";
+        document.getElementById("arrow").style.display = "none";
+        return;
+      }
+
+      // 次の目的地へ
+      currentIndex++;
+      const next = destinations[currentIndex];
+      alert(`目的地 ${currentIndex} に到着しました！\n次の目的地へ向かいます：\n${next.name}`);
+      document.getElementById("info").innerText =
+        `目的地 ${currentIndex + 1}：${next.name}\n現在地を取得中...`;
       return;
     }
 
-    // ▼ 表示更新
+    // --- 方向矢印を回転 ---
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
+
+    // --- 表示更新 ---
     document.getElementById("info").innerText =
-      `距離：約${distance.toFixed(1)}m\n方位：${bearing.toFixed(1)}°\n補正：${headingOffset.toFixed(1)}°\nGPS精度：${gpsStatus}`;
+      `目的地 ${currentIndex + 1}：${target.name}\n` +
+      `距離：約${distance.toFixed(1)}m\n` +
+      `GPS精度：${gpsStatus}`;
   },
   err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
@@ -186,4 +233,5 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
 
