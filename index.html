@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（ナビ自動切替）</title>
+<title>HUDナビ（自動切替）</title>
 
 <style>
   body {
@@ -184,7 +184,7 @@ function startNavigation() {
     if (acc > 100) gpsStatus = "✖";
 
     // 到着判定（精度も加味）
-  if (distance < 50 && acc < 30) {
+if (distance < 50 && acc < 30) {
 
   // 次の目的地へ進む準備（まだ currentIndex は進めない）
   let nextName =
@@ -217,11 +217,6 @@ function startNavigation() {
 
   return;  // この回のGPS処理は終了
 }
-      // 次の目的地へ切り替え
-      target = waypoints[currentIndex];
-      alert(`次の目的地へ向かいます：${target.name}`);
-    }
-
     // 表示更新
     document.getElementById("arrow").style.transform =
       `rotate(${correctedBearing}deg)`;
