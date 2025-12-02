@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（自動切替）</title>
+<title>HUDナビ（自動ナビ切替）</title>
 
 <style>
   body {
@@ -213,7 +213,7 @@ if (distance < 50 && acc < 30) {
   setTimeout(() => {
     currentIndex++;                 // ← 目的地を進める
     arrived = false;                 // ← 再開
-  }, 5000);
+  }, 6000);
 
   return;  // この回のGPS処理は終了
 }
@@ -224,9 +224,9 @@ if (distance < 50 && acc < 30) {
     document.getElementById("info").innerText =
       `次の目的地：${target.name} (${currentIndex+1}/${waypoints.length})\n` +
       `距離：約${distance.toFixed(1)} m\n` +
-      `方位：${bearing.toFixed(1)}°\n` +
-      `補正：${headingOffset.toFixed(1)}°\n` +
       `GPS精度：${gpsStatus}`;
+       //`方位：${bearing.toFixed(1)}°\n` +
+      //`補正：${headingOffset.toFixed(1)}°\n` 
 
   }, err => {
 
@@ -254,5 +254,6 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
