@@ -184,19 +184,39 @@ function startNavigation() {
     if (acc > 100) gpsStatus = "✖";
 
     // 到着判定（精度も加味）
-    if (distance < 50 && acc < 30) {
+  if (distance < 50 && acc < 30) {
 
-      // 次の目的地へ進む
-      currentIndex++;
+  // 次の目的地へ進む準備（まだ currentIndex は進めない）
+  let nextName =
+    (currentIndex + 1 < waypoints.length)
+      ? waypoints[currentIndex + 1].name
+      : null;
 
-      if (currentIndex >= waypoints.length) {
-        arrived = true;
-        document.getElementById("info").innerText =
-          "🎉 全ての目的地に到着しました！";
-        document.getElementById("arrow").style.display = "none";
-        return;
-      }
+  if (!nextName) {
+    // 最後の目的地に到着
+    arrived = true;
+    document.getElementById("info").innerText =
+      "🎉 全ての目的地に到着しました！";
+    document.getElementById("arrow").style.display = "none";
+    return;
+  }
 
+  // 次の目的地の案内を表示して 5 秒待機
+  document.getElementById("info").innerText =
+    `目的地に到着しました！\n\n` +
+    `次の目的地に向かいます：${nextName}\n` +
+    `5秒後に自動でナビを再開します…`;
+
+  arrived = true;   // 一時停止扱い（処理が暴走しないように）
+
+  // 5 秒後に次の目的地へ切り替えてナビ続行
+  setTimeout(() => {
+    currentIndex++;                 // ← 目的地を進める
+    arrived = false;                 // ← 再開
+  }, 5000);
+
+  return;  // この回のGPS処理は終了
+}
       // 次の目的地へ切り替え
       target = waypoints[currentIndex];
       alert(`次の目的地へ向かいます：${target.name}`);
@@ -239,3 +259,4 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
