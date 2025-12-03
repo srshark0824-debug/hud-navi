@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（自動ナビ切替）</title>
+<title>HUDナビ（ナビ切替）</title>
 
 <style>
   body {
@@ -62,22 +62,29 @@ async function enableOrientation() {
   }
 
   // 方位の揺れを移動平均で平滑化
-  window.addEventListener("deviceorientation", e => {
-    if (e.alpha == null) return;
+ window.addEventListener("deviceorientation", e => {
+  let heading;
 
-    const newHeading = 360 - e.alpha;
-    headingHistory.push(newHeading);
+  // iPhone専用の正確なコンパス値
+  if (e.webkitCompassHeading !== undefined) {
+    heading = e.webkitCompassHeading;
+  }
+  // その他端末
+  else if (e.alpha !== null) {
+    heading = 360 - e.alpha;
+  }
+
+  if (heading !== undefined) {
+    headingHistory.push(heading);
     if (headingHistory.length > 5) headingHistory.shift();
-
     const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
     headingOffset = avg;
-  });
+  }
+});
 }
 
-
-
 // --------------------------------------
-// ② 目的地入力（複数対応）
+// 目的地入力（複数対応）
 // --------------------------------------
 async function inputDestinations() {
 
@@ -254,6 +261,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
 
