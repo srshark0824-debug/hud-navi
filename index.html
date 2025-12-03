@@ -188,10 +188,6 @@ function startNavigation() {
     // GPS 精度アイコン
     let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
-    // 精度が悪い時は距離を動かしすぎない
-    distance = (distancePrev * 0.7) + (distance * 0.3);
-      }
-    distancePrev = distance;
     if (acc > 100) gpsStatus = "✖";
 
     // 到着判定（精度も加味）
@@ -265,6 +261,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
 
