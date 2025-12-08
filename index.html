@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（ナビ自動切替）</title>
+<title>HUDナビ（ナビ切替）</title>
 
 <style>
   body {
@@ -14,6 +14,7 @@
     margin-top: 7vh;
   }
 
+  /* 赤い光を放つ矢印画像 */
   #arrow {
     width: 150px;
     height: 150px;
@@ -39,18 +40,16 @@
   <button id="startBtn">▶️ ナビ開始</button>
 
 <script>
-const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY"; // ←必要に応じて変更
-let waypoints = [];             // 目的地リスト
-let currentIndex = 0;           // 現在の目的地
+const API_KEY = "";
+let waypoints = [];
+let currentIndex = 0;
 let arrived = false;
 
-// 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
 
-
 // --------------------------------------
-// ① 方位センサー許可＋安定化
+// ① 方位センサー許可＋移動平均でブレ軽減
 // --------------------------------------
 async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === "function") {
@@ -61,33 +60,29 @@ async function enableOrientation() {
     }
   }
 
-  // 方位の揺れを移動平均で平滑化
- window.addEventListener("deviceorientation", e => {
-  let heading;
+  window.addEventListener("deviceorientation", e => {
+    let heading;
 
-  // iPhone専用の正確なコンパス値
-  if (e.webkitCompassHeading !== undefined) {
-    heading = e.webkitCompassHeading;
-  }
-  // その他端末
-  else if (e.alpha !== null) {
-    heading = 360 - e.alpha;
-  }
+    if (e.webkitCompassHeading !== undefined) {
+      heading = e.webkitCompassHeading;
+    } else if (e.alpha !== null) {
+      heading = 360 - e.alpha;
+    }
 
-  if (heading !== undefined) {
-    headingHistory.push(heading);
-    if (headingHistory.length > 5) headingHistory.shift();
-    const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-    headingOffset = avg;
-  }
-});
+    if (heading !== undefined) {
+      headingHistory.push(heading);
+      if (headingHistory.length > 5) headingHistory.shift();
+
+      const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+      headingOffset = avg;
+    }
+  });
 }
 
 // --------------------------------------
-// 目的地入力（複数対応）
+// ② 目的地入力（複数対応）
 // --------------------------------------
 async function inputDestinations() {
-
   while (true) {
     const place = prompt(
       `目的地 ${waypoints.length + 1} を入力してください\n例：京都駅\nキャンセルで終了します。`
@@ -95,8 +90,9 @@ async function inputDestinations() {
 
     if (!place) break;
 
-    // Geocode API へ問い合わせ
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+
     const res = await fetch(url);
     const data = await res.json();
 
@@ -107,14 +103,12 @@ async function inputDestinations() {
 
     const result = data.results[0];
 
-    // 🔵 ここが重要：ユーザー入力とGoogle住所の両方を表示
     const ok = confirm(
       `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
     );
 
     if (!ok) continue;
 
-    // 🔵 保存する name は「Google住所」ではなく「ユーザー入力文字列」
     waypoints.push({
       name: place,
       lat: result.geometry.location.lat,
@@ -122,15 +116,8 @@ async function inputDestinations() {
     });
   }
 
-  if (waypoints.length === 0) {
-    alert("目的地が入力されていません。");
-    return false;
-  }
-
-  return true;
+  return waypoints.length > 0;
 }
-
-
 
 // --------------------------------------
 // ③ 距離計算（Haversine）
@@ -142,36 +129,35 @@ function getDistance(lat1, lon1, lat2, lon2) {
   const Δφ = (lat2 - lat1) * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-  const a = Math.sin(Δφ/2)**2 +
-            Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(Δφ / 2) ** 2 +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c;
 }
-
-
 
 // --------------------------------------
 // ④ 方位角計算
 // --------------------------------------
 function getBearing(lat1, lon1, lat2, lon2) {
-  const toRad = deg => deg * Math.PI/180;
-  const y = Math.sin(toRad(lon2-lon1)) * Math.cos(toRad(lat2));
-  const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) -
-            Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
+  const toRad = deg => deg * Math.PI / 180;
+
+  const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+  const x =
+    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+    Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+
   const brng = Math.atan2(y, x);
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
-
-
 // --------------------------------------
-// ⑤ ナビ開始（複数目的地対応）
+// ⑤ ナビ開始（位置更新・到着判定・複数目的地対応）
 // --------------------------------------
 function startNavigation() {
-
   navigator.geolocation.watchPosition(pos => {
-
     if (arrived) return;
 
     let target = waypoints[currentIndex];
@@ -181,69 +167,52 @@ function startNavigation() {
 
     let bearing = getBearing(lat, lon, target.lat, target.lon);
     let distance = getDistance(lat, lon, target.lat, target.lon);
-
-    // 方位補正（iPhone向け）
     let correctedBearing = (bearing - headingOffset + 360) % 360;
 
-    // GPS 精度アイコン
     let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
 
-    // 到着判定（精度も加味）
-if (distance < 50 && acc < 30) {
+    if (distance < 50 && acc < 30) {
+      let nextName =
+        currentIndex + 1 < waypoints.length
+          ? waypoints[currentIndex + 1].name
+          : null;
 
-  // 次の目的地へ進む準備（まだ currentIndex は進めない）
-  let nextName =
-    (currentIndex + 1 < waypoints.length)
-      ? waypoints[currentIndex + 1].name
-      : null;
+      if (!nextName) {
+        arrived = true;
+        document.getElementById("info").innerText =
+          "🎉 全ての目的地に到着しました！";
+        document.getElementById("arrow").style.display = "none";
+        return;
+      }
 
-  if (!nextName) {
-    // 最後の目的地に到着
-    arrived = true;
-    document.getElementById("info").innerText =
-      "🎉 全ての目的地に到着しました！";
-    document.getElementById("arrow").style.display = "none";
-    return;
-  }
+      document.getElementById("info").innerText =
+        `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
 
-  // 次の目的地の案内を表示して 5 秒待機
-  document.getElementById("info").innerText =
-    `目的地に到着しました！\n\n` +
-    `次の目的地に向かいます：${nextName}\n` +
-    `5秒後に自動でナビを再開します…`;
+      arrived = true;
 
-  arrived = true;   // 一時停止扱い（処理が暴走しないように）
+      setTimeout(() => {
+        currentIndex++;
+        arrived = false;
+      }, 6000);
 
-  // 5 秒後に次の目的地へ切り替えてナビ続行
-  setTimeout(() => {
-    currentIndex++;                 // ← 目的地を進める
-    arrived = false;                 // ← 再開
-  }, 6000);
+      return;
+    }
 
-  return;  // この回のGPS処理は終了
-}
-    // 表示更新
     document.getElementById("arrow").style.transform =
       `rotate(${correctedBearing}deg)`;
 
     document.getElementById("info").innerText =
-      `次の目的地：${target.name} (${currentIndex+1}/${waypoints.length})\n` +
+      `次の目的地：${target.name} (${currentIndex + 1}/${waypoints.length})\n` +
       `距離：約${distance.toFixed(1)} m\n` +
       `GPS精度：${gpsStatus}`;
-       //`方位：${bearing.toFixed(1)}°\n` +
-      //`補正：${headingOffset.toFixed(1)}°\n` 
-
-  }, err => {
-
+  },
+  err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
-
-  }, { enableHighAccuracy: true });
-
+  },
+  { enableHighAccuracy: true });
 }
-
-
 
 // --------------------------------------
 // ⑥ スタートボタン
@@ -261,9 +230,3 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
-
-
-
-
-
-
