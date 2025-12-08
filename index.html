@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（自動切替）</title>
+<title>HUDナビ（ナビ切替）</title>
 
 <style>
   body {
@@ -164,13 +164,36 @@ function getBearing(lat1, lon1, lat2, lon2) {
 }
 
 
-
 // --------------------------------------
 // ⑤ ナビ開始（複数目的地対応）
 // --------------------------------------
 function startNavigation() {
+  
+let lastPos = null;  // グローバルに置く
 
-  navigator.geolocation.watchPosition(pos => {
+navigator.geolocation.watchPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const acc = pos.coords.accuracy;
+
+    // ---★ ここから改善案C（歩行方向の利用）追加 ★---
+    if (lastPos) {
+        // 前の位置と現在の位置から歩行方向（移動ベクトル）を計算
+        const headingMove = getBearing(
+            lastPos.lat, lastPos.lon,
+            lat, lon
+        );
+
+        // 一定以上動いたら（例：2m）、コンパスより歩行方向を優先
+        const moved = getDistance(lastPos.lat, lastPos.lon, lat, lon);
+
+        if (moved > 2) {
+            headingOffset = headingMove; // ← ここが重要！
+        }
+    }
+    lastPos = { lat, lon };
+    // ---★ 改善案Cここまで ★---
+
 
     if (arrived) return;
 
@@ -184,6 +207,8 @@ function startNavigation() {
 
     // 方位補正（iPhone向け）
     let correctedBearing = (bearing - headingOffset + 360) % 360;
+
+    
 
     // GPS 精度アイコン
     let gpsStatus = "〇";
@@ -261,3 +286,4 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
