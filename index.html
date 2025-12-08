@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HUDナビ（自動切替）</title>
+<title>HUDナビ（ナビ自動切替）</title>
 
 <style>
   body {
@@ -48,7 +48,6 @@ let arrived = false;
 let headingOffset = 0;
 let headingHistory = [];
 
-
 // --------------------------------------
 // ① 方位センサー許可＋安定化
 // --------------------------------------
@@ -62,25 +61,25 @@ async function enableOrientation() {
   }
 
   // 方位の揺れを移動平均で平滑化
- window.addEventListener("deviceorientation", e => {
-  let heading;
+  window.addEventListener("deviceorientation", e => {
+    let heading;
 
-  // iPhone専用の正確なコンパス値
-  if (e.webkitCompassHeading !== undefined) {
-    heading = e.webkitCompassHeading;
-  }
-  // その他端末
-  else if (e.alpha !== null) {
-    heading = 360 - e.alpha;
-  }
+    // iPhone専用の正確なコンパス値
+    if (e.webkitCompassHeading !== undefined) {
+      heading = e.webkitCompassHeading;
+    }
+    // その他端末
+    else if (e.alpha !== null) {
+      heading = 360 - e.alpha;
+    }
 
-  if (heading !== undefined) {
-    headingHistory.push(heading);
-    if (headingHistory.length > 5) headingHistory.shift();
-    const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
-    headingOffset = avg;
-  }
-});
+    if (heading !== undefined) {
+      headingHistory.push(heading);
+      if (headingHistory.length > 5) headingHistory.shift();
+      const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+      headingOffset = avg;
+    }
+  });
 }
 
 // --------------------------------------
@@ -130,10 +129,8 @@ async function inputDestinations() {
   return true;
 }
 
-
-
 // --------------------------------------
-// ③ 距離計算（Haversine）
+// 距離計算（Haversine）
 // --------------------------------------
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
@@ -149,10 +146,8 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-
-
 // --------------------------------------
-// ④ 方位角計算
+// 方位角計算
 // --------------------------------------
 function getBearing(lat1, lon1, lat2, lon2) {
   const toRad = deg => deg * Math.PI/180;
@@ -163,114 +158,89 @@ function getBearing(lat1, lon1, lat2, lon2) {
   return (brng * 180 / Math.PI + 360) % 360;
 }
 
-
 // --------------------------------------
-// ⑤ ナビ開始（複数目的地対応）
+// ナビ開始（複数目的地対応）
 // --------------------------------------
 function startNavigation() {
-  
-let lastPos = null;  // グローバルに置く
+  let lastPos = null;  // for movement-based heading
+  let distancePrev = null;
 
-navigator.geolocation.watchPosition((pos) => {
+  navigator.geolocation.watchPosition((pos) => {
+    // 必要な値を一回だけ宣言（重複宣言を避ける）
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
     const acc = pos.coords.accuracy;
 
-    // ---★ ここから改善案C（歩行方向の利用）追加 ★---
+    // ---★ 改善案C（歩行方向の利用）★---
     if (lastPos) {
-        // 前の位置と現在の位置から歩行方向（移動ベクトル）を計算
-        const headingMove = getBearing(
-            lastPos.lat, lastPos.lon,
-            lat, lon
-        );
-
-        // 一定以上動いたら（例：2m）、コンパスより歩行方向を優先
-        const moved = getDistance(lastPos.lat, lastPos.lon, lat, lon);
-
-        if (moved > 2) {
-            headingOffset = headingMove; // ← ここが重要！
-        }
+      const moved = getDistance(lastPos.lat, lastPos.lon, lat, lon);
+      if (moved > 2) {
+        const headingMove = getBearing(lastPos.lat, lastPos.lon, lat, lon);
+        // 少し平滑化して上書き（急激なジャンプを防ぐ）
+        headingOffset = (headingOffset * 0.4) + (headingMove * 0.6);
+      }
     }
     lastPos = { lat, lon };
-    // ---★ 改善案Cここまで ★---
+    // ---★ 改善案C 終了 ★---
 
     if (arrived) return;
 
-    let target = waypoints[currentIndex];
-    let lat = pos.coords.latitude;
-    let lon = pos.coords.longitude;
-    let acc = pos.coords.accuracy;
+    const target = waypoints[currentIndex];
 
-    let bearing = getBearing(lat, lon, target.lat, target.lon);
+    const bearing = getBearing(lat, lon, target.lat, target.lon);
     let distance = getDistance(lat, lon, target.lat, target.lon);
 
-    // 方位補正（iPhone向け）
-    let correctedBearing = (bearing - headingOffset + 360) % 360;
+    // GPS 精度が悪いときは距離を平滑化する（飛び対策）
+    if (distancePrev !== null && acc > 30) {
+      distance = (distancePrev * 0.7) + (distance * 0.3);
+    }
+    distancePrev = distance;
 
-    
+    // 方位補正（目的地方位 - 端末向き）
+    const correctedBearing = (bearing - headingOffset + 360) % 360;
 
-    // GPS 精度アイコン
+    // GPS 精度アイコン（〇 △ ✖）
     let gpsStatus = "〇";
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
 
     // 到着判定（精度も加味）
-if (distance < 50 && acc < 30) {
+    if (distance < 50 && acc < 30) {
+      const nextName = (currentIndex + 1 < waypoints.length) ? waypoints[currentIndex + 1].name : null;
+      if (!nextName) {
+        arrived = true;
+        document.getElementById("info").innerText = "🎉 全ての目的地に到着しました！";
+        document.getElementById("arrow").style.display = "none";
+        return;
+      }
 
-  // 次の目的地へ進む準備（まだ currentIndex は進めない）
-  let nextName =
-    (currentIndex + 1 < waypoints.length)
-      ? waypoints[currentIndex + 1].name
-      : null;
+      document.getElementById("info").innerText =
+        `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
 
-  if (!nextName) {
-    // 最後の目的地に到着
-    arrived = true;
-    document.getElementById("info").innerText =
-      "🎉 全ての目的地に到着しました！";
-    document.getElementById("arrow").style.display = "none";
-    return;
-  }
+      arrived = true;
 
-  // 次の目的地の案内を表示して 5 秒待機
-  document.getElementById("info").innerText =
-    `目的地に到着しました！\n\n` +
-    `次の目的地に向かいます：${nextName}\n` +
-    `5秒後に自動でナビを再開します…`;
+      setTimeout(() => {
+        currentIndex++;
+        arrived = false;
+      }, 6000);
 
-  arrived = true;   // 一時停止扱い（処理が暴走しないように）
+      return;
+    }
 
-  // 5 秒後に次の目的地へ切り替えてナビ続行
-  setTimeout(() => {
-    currentIndex++;                 // ← 目的地を進める
-    arrived = false;                 // ← 再開
-  }, 6000);
-
-  return;  // この回のGPS処理は終了
-}
-    // 表示更新
-    document.getElementById("arrow").style.transform =
-      `rotate(${correctedBearing}deg)`;
-
+    // 画面更新
+    document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
     document.getElementById("info").innerText =
       `次の目的地：${target.name} (${currentIndex+1}/${waypoints.length})\n` +
       `距離：約${distance.toFixed(1)} m\n` +
       `GPS精度：${gpsStatus}`;
-       //`方位：${bearing.toFixed(1)}°\n` +
-      //`補正：${headingOffset.toFixed(1)}°\n` 
 
   }, err => {
-
     document.getElementById("info").innerText = "位置情報が取得できません。";
-
   }, { enableHighAccuracy: true });
-
 }
 
-
-
 // --------------------------------------
-// ⑥ スタートボタン
+// スタートボタン
 // --------------------------------------
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
@@ -285,9 +255,3 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
-
-
-
-
-
-
