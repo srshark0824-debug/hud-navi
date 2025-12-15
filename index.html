@@ -204,8 +204,8 @@ function startNavigation() {
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
 
-    // 到着判定（精度も加味）
-    if (distance < 50 && acc < 30) {
+    // 到着判定
+    if (distance < 10 && acc < 30) {
       const nextName = (currentIndex + 1 < waypoints.length) ? waypoints[currentIndex + 1].name : null;
       if (!nextName) {
         arrived = true;
@@ -255,4 +255,5 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
