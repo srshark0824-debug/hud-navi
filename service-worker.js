@@ -26,3 +26,22 @@ self.addEventListener("fetch", event => {
     })
   );
 });
+
+// ================================
+// リセット処理
+// ================================
+document.getElementById("resetBtn").addEventListener("click", () => {
+  const ok = confirm("保存された目的地とナビ状態を全て削除しますか？");
+  if (!ok) return;
+
+  localStorage.removeItem("hud_waypoints");
+  waypoints = [];
+  currentIndex = 0;
+  arrived = false;
+
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("info").innerText = "リセットしました。";
+  document.getElementById("arrow").style.display = "block";
+  document.getElementById("startBtn").style.display = "inline";
+});
+
