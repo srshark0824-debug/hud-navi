@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（ナビ自動切替）</title>
+<title>HUDナビ（➀）</title>
 
 <style>
   body {
@@ -85,6 +85,28 @@ async function enableOrientation() {
     }
   });
 }
+// ================================
+// 目的地リストを保存
+// ================================
+function saveWaypoints() {
+  localStorage.setItem("hud_waypoints", JSON.stringify(waypoints));
+}
+// ================================
+// 目的地リストを読み込む
+// ================================
+function loadWaypoints() {
+  const saved = localStorage.getItem("hud_waypoints");
+  if (!saved) return false;
+
+  try {
+    waypoints = JSON.parse(saved);
+    return waypoints.length > 0;
+  } catch (e) {
+    console.error("保存データの読み込み失敗", e);
+    return false;
+  }
+}
+
 
 // --------------------------------------
 // 目的地入力（複数対応）
@@ -123,6 +145,7 @@ async function inputDestinations() {
       lat: result.geometry.location.lat,
       lon: result.geometry.location.lng
     });
+    saveWaypoints();
   }
 
   if (waypoints.length === 0) {
@@ -249,12 +272,30 @@ function startNavigation() {
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
 
+  // ★ 保存データがあるか確認
+  if (loadWaypoints()) {
+    const resume = confirm(
+      "前回の目的地が残っています。\n続きから再開しますか？"
+    );
+    if (resume) {
+      document.getElementById("startBtn").style.display = "none";
+      startNavigation();
+      return;
+    } else {
+      localStorage.removeItem("hud_waypoints");
+      waypoints = [];
+      currentIndex = 0;
+    }
+  }
+
+  // 新規入力
   const ok = await inputDestinations();
   if (!ok) return;
 
   document.getElementById("startBtn").style.display = "none";
   startNavigation();
 });
+
 
   if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js")
@@ -265,6 +306,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
 
