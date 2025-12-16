@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（➀）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -30,6 +30,13 @@
   }
 
   #info {
+    <div style="margin-top:20px;">
+  <button id="listBtn">📋 目的地一覧</button>
+  <button id="resetBtn">♻ リセット</button>
+</div>
+
+<div id="listView" style="display:none; margin-top:20px;"></div>
+
     margin-top: 15px;
     white-space: pre-line;
   }
@@ -41,6 +48,14 @@
   <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
   <button id="startBtn">▶️ ナビ開始</button>
+  
+  <div style="margin-top:20px;">
+  <button id="listBtn">📋 目的地一覧</button>
+  <button id="resetBtn">♻ リセット</button>
+</div>
+
+<div id="listView" style="display:none; margin-top:20px;"></div>
+
 
 <script>
 const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY"; // ←必要に応じて変更
@@ -306,6 +321,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
 
 
