@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -294,6 +294,25 @@ function startNavigation() {
   }, { enableHighAccuracy: true });
 }
 
+// ================================
+// HUD 大文字モード切替
+// ================================
+const body = document.body;
+const fontToggleBtn = document.getElementById("fontToggleBtn");
+
+// 初期状態（保存データから復元）
+const savedFontMode = localStorage.getItem("hud_font_mode");
+if (savedFontMode === "large") {
+  body.classList.add("hud-large");
+}
+
+// 手動切替
+fontToggleBtn.addEventListener("click", () => {
+  body.classList.toggle("hud-large");
+
+  const mode = body.classList.contains("hud-large") ? "large" : "normal";
+  localStorage.setItem("hud_font_mode", mode);
+});
 
 
 
@@ -428,6 +447,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
 
 
