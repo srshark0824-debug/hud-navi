@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（3）</title>
+<title>HUDナビ（1）</title>
 
 <style>
   body {
@@ -37,7 +37,9 @@
   font-size: 1.2em;   /* ← 2.0 → 1.2 */
 }
 
-
+/*.hud-large button {
+  font-size: 1.1em;*/   /* ← 1.2 → 1.1 */
+}
 
   #arrow {
     width: 150px;
@@ -290,6 +292,7 @@ function startNavigation() {
       `次の目的地：${target.name} (${currentIndex+1}/${waypoints.length})\n` +
       `距離：約${distance.toFixed(1)} m\n` +
       `GPS精度：${gpsStatus}`;
+    margin-bottom: -20px;   /* ← 文字との間隔を確保 */
 
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
@@ -449,6 +452,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
 
 
