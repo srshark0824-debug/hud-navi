@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -19,20 +19,25 @@
 
   }
 
-/* ===========================
-HUD 大文字モード
-=========================== */
+/* HUD 大文字モード（要調整） */
 .hud-large {
-  font-size: 1.8em;
+  font-size: 1.2em;   /* ← 1.8 → 1.2 */
 }
+
 .hud-large #info {
-  font-size: 1.6em;
+  font-size: 1.15em;  /* ← 1.6 → 1.15 */
   font-weight: bold;
-  line-height: 1.6;
+  line-height: 1.4;
 }
+
+.hud-large h2 {
+  font-size: 1.4em;   /* ← 2.0 → 1.4 */
+}
+
 .hud-large button {
-  font-size: 0.5em;
+  font-size: 1.1em;   /* ← 1.2 → 1.1 */
 }
+
 
   #arrow {
     width: 150px;
@@ -58,7 +63,7 @@ HUD 大文字モード
   <p id="info">目的地を設定してください。</p>
   <button id="startBtn">▶️ ナビ開始</button>
   <button id="fontToggleBtn">🔍 大文字モード</button>
-  <div style="margin-top:25px;">
+  <div style="margin-top:20px;">
   <button id="listBtn">📋 目的地一覧</button>
   <button id="resetBtn">♻ リセット</button>
 </div>
@@ -443,6 +448,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
 
 
