@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（1）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -16,7 +16,10 @@
     font-family: monospace;
     text-align: center;
     margin-top: 7vh;
-  /* ===========================
+
+  }
+
+    /* ===========================
 HUD 大文字モード
 =========================== */
 .hud-large {
@@ -33,7 +36,6 @@ HUD 大文字モード
 .hud-large button {
   font-size: 1.2em;
 }
-  }
 
   #arrow {
     width: 150px;
@@ -47,13 +49,6 @@ HUD 大文字モード
   }
 
   #info {
-    <div style="margin-top:20px;">
-  <button id="listBtn">📋 目的地一覧</button>
-  <button id="resetBtn">♻ リセット</button>
-</div>
-
-<div id="listView" style="display:none; margin-top:20px;"></div>
-
     margin-top: 15px;
     white-space: pre-line;
   }
@@ -445,6 +440,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
 
 
