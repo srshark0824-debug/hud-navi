@@ -16,7 +16,7 @@
     font-family: monospace;
     text-align: center;
     margin-top: 7vh;
-/* ===========================
+  /* ===========================
 HUD 大文字モード
 =========================== */
 .hud-large {
@@ -299,6 +299,21 @@ function startNavigation() {
   }, { enableHighAccuracy: true });
 }
 
+document.getElementById("startBtn").addEventListener("click", async () => {
+
+  // 🔵 HUD用に自動で大文字モードON
+  document.body.classList.add("hud-large");
+  localStorage.setItem("hud_font_mode", "large");
+
+  await enableOrientation();
+  const ok = await inputDestinations();
+  if (!ok) return;
+
+  document.getElementById("startBtn").style.display = "none";
+  startNavigation();
+});
+
+
 // --------------------------------------
 // スタートボタン
 // --------------------------------------
@@ -425,30 +440,12 @@ document.getElementById("listBtn").addEventListener("click", () => {
     .then(() => console.log("Service Worker registered"))
     .catch(err => console.error("SW registration failed:", err));
 }
-// ================================
-// HUD 大文字モード切替
-// ================================
-const body = document.body;
-const fontToggleBtn = document.getElementById("fontToggleBtn");
-
-// 初期状態（保存データから復元）
-const savedFontMode = localStorage.getItem("hud_font_mode");
-if (savedFontMode === "large") {
-  body.classList.add("hud-large");
-}
-
-// 手動切替
-fontToggleBtn.addEventListener("click", () => {
-  body.classList.toggle("hud-large");
-
-  const mode = body.classList.contains("hud-large") ? "large" : "normal";
-  localStorage.setItem("hud_font_mode", mode);
-});
 
 </script>
 
 </body>
 </html>
+
 
 
 
