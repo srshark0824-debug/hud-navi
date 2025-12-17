@@ -16,6 +16,23 @@
     font-family: monospace;
     text-align: center;
     margin-top: 7vh;
+/* ===========================
+HUD 大文字モード
+=========================== */
+.hud-large {
+  font-size: 1.8em;
+}
+.hud-large #info {
+  font-size: 1.6em;
+  font-weight: bold;
+  line-height: 1.6;
+}
+.hud-large h2 {
+  font-size: 2em;
+}
+.hud-large button {
+  font-size: 1.2em;
+}
   }
 
   #arrow {
@@ -48,7 +65,8 @@
   <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
   <button id="startBtn">▶️ ナビ開始</button>
-  
+  <button id="fontToggleBtn">🔍 大文字モード</button>
+
   <div style="margin-top:20px;">
   <button id="listBtn">📋 目的地一覧</button>
   <button id="resetBtn">♻ リセット</button>
@@ -407,10 +425,31 @@ document.getElementById("listBtn").addEventListener("click", () => {
     .then(() => console.log("Service Worker registered"))
     .catch(err => console.error("SW registration failed:", err));
 }
+// ================================
+// HUD 大文字モード切替
+// ================================
+const body = document.body;
+const fontToggleBtn = document.getElementById("fontToggleBtn");
+
+// 初期状態（保存データから復元）
+const savedFontMode = localStorage.getItem("hud_font_mode");
+if (savedFontMode === "large") {
+  body.classList.add("hud-large");
+}
+
+// 手動切替
+fontToggleBtn.addEventListener("click", () => {
+  body.classList.toggle("hud-large");
+
+  const mode = body.classList.contains("hud-large") ? "large" : "normal";
+  localStorage.setItem("hud_font_mode", mode);
+});
+
 </script>
 
 </body>
 </html>
+
 
 
 
