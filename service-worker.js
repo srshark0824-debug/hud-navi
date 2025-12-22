@@ -3,11 +3,7 @@ const CACHE_NAME = "hud-navi-v2";
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
-  "./offline.html", 
-  "./manifest.json",
-  "./arrow.png",
-  "./icon-192.png",
-  "./icon-512.png"
+
 ];
 
 // インストール時にキャッシュ
