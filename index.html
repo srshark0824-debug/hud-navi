@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（２）</title>
+<title>HUDナビ（3）</title>
 
 <style>
   body {
@@ -26,10 +26,10 @@
   font-size: 1.2em;   /* ← 1.8 → 1.2 */
 }
   .hud-large #info {
-  margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
-  font-size: 1.15em;  /* ← 1.6 → 1.15 */
-  font-weight: bold;
-  line-height: 1.4;
+   margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
+   font-size: 1.15em;  /* ← 1.6 → 1.15 */
+   font-weight: bold;
+   line-height: 1.4;
   
   max-width: 90%;
   margin: 0 auto;/**/    /*←横幅を減らす処理 */
@@ -44,8 +44,8 @@
   margin-bottom: 12px;
   /*font-size: 1.1em;*/   /* ← 1.2 → 1.1 */
 }
-
-  .hud-large .controls {
+  
+.hud-large .controls {
   margin-top: 40px;
 }
 
@@ -142,14 +142,14 @@ function loadWaypoints() {
   if (!saved) return false;
 
   try {
-  const res = await fetch(url);
-  const data = await res.json();
+  //const res = await fetch(url);
+  //const data = await res.json();
     waypoints = JSON.parse(saved);
     return waypoints.length > 0;
   } catch (e) {
     console.error("保存データの読み込み失敗", e);
-    alert("オフライン中は新しい目的地を追加できません。");
-    break;
+    //alert("オフライン中は新しい目的地を追加できません。");
+    //break;
     return false;
   }
 }
