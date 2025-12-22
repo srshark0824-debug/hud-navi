@@ -6,9 +6,7 @@ const FILES_TO_CACHE = [
   "./offline.html", 
   "./manifest.json",
   "./arrow.png",
-  "./icon-192.png",
-  "./icon-512.png"
-  
+  "./icon-192.png",  
 ];
 
 // インストール時にキャッシュ
