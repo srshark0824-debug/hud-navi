@@ -22,9 +22,18 @@ self.addEventListener("install", event => {
 // リクエスト時はキャッシュ優先
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then(response => {
+        return response;
+      })
+      .catch(() => {
+        // 通信失敗時
+        return caches.match(event.request)
+          .then(res => {
+            // キャッシュがあればそれを返す
+            return res || caches.match("./offline.html");
+          });
+      })
   );
 });
 
