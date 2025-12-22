@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（2）</title>
+<title>HUDナビ（１）</title>
 
 <style>
   body {
@@ -44,6 +44,10 @@
   /*font-size: 1.1em;*/   /* ← 1.2 → 1.1 */
 }
 
+  .hud-large .controls {
+  margin-top: 40px;
+}
+
   #arrow {
     width: 150px;
     height: 150px;
@@ -67,6 +71,7 @@
   <h2>HUDナビ</h2>
   <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
+  <div class="controls">
   <button id="startBtn">▶️ ナビ開始</button>
   <button id="fontToggleBtn">🔍 大文字モード</button>
   <div style="margin-top:20px;">
@@ -454,6 +459,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 
 </body>
 </html>
+
 
 
 
