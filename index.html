@@ -142,14 +142,14 @@ function loadWaypoints() {
   if (!saved) return false;
 
   try {
-  //const res = await fetch(url);
-  //const data = await res.json();
+  const res = await fetch(url);
+  const data = await res.json();
     waypoints = JSON.parse(saved);
     return waypoints.length > 0;
   } catch (e) {
     console.error("保存データの読み込み失敗", e);
-    //alert("オフライン中は新しい目的地を追加できません。");
-    //break;
+    alert("オフライン中は新しい目的地を追加できません。");
+    break;
     return false;
   }
 }
@@ -464,6 +464,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
 
 
 
