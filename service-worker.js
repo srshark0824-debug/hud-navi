@@ -4,6 +4,9 @@ const FILES_TO_CACHE = [
   "./",
   "./index.html",
   "./offline.html", 
+  "./manifest.json",
+  "./arrow.png",
+
   
 
 ];
