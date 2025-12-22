@@ -7,7 +7,7 @@ const FILES_TO_CACHE = [
   "./manifest.json",
   "./arrow.png",
   "./icon-192.png",
-
+  "./icon-512.png"
 ];
 
 // インストール時にキャッシュ
