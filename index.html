@@ -152,11 +152,33 @@ function loadWaypoints() {
   }
 }
 
+// ================================
+// オフライン判定（必須）
+// ================================
+function isOffline() {
+  return !navigator.onLine;
+}
+
+// オフライン時の共通処理
+function showOfflineMessage() {
+  document.getElementById("info").innerText =
+    "⚠️ オフラインです。\nネット接続後に再度お試しください。";
+}
 
 // --------------------------------------
 // 目的地入力（複数対応）
 // --------------------------------------
 async function inputDestinations() {
+
+  if (isOffline()) {
+    alert("オフラインのため目的地検索はできません。");
+    showOfflineMessage();
+    return false;
+  }
+
+  // ↓ ここから通常処理
+}
+
 
   while (true) {
     const place = prompt(
@@ -462,4 +484,5 @@ document.getElementById("listBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
 
