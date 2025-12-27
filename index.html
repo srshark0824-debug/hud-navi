@@ -154,11 +154,19 @@ function loadWaypoints() {
   }
 }
 
-
 // --------------------------------------
-// 目的地入力（複数対応）
+// 目的地入力（複数対応・オフライン対策済）
 // --------------------------------------
 async function inputDestinations() {
+
+  // 🔴 オフライン中は新規入力不可
+  if (!isOnline()) {
+    alert(
+      "現在オフラインです。\n" +
+      "新しい目的地はオンライン時のみ追加できます。"
+    );
+    return false;
+  }
 
   while (true) {
     const place = prompt(
@@ -167,32 +175,46 @@ async function inputDestinations() {
 
     if (!place) break;
 
-    // Geocode API へ問い合わせ
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json` +
+      `?address=${encodeURIComponent(place)}` +
+      `&key=${API_KEY}`;
 
-    if (!data.results.length) {
-      alert("場所が見つかりませんでした。");
-      continue;
+    try {
+      const res = await fetch(url);
+
+      // 通信失敗対策
+      if (!res.ok) throw new Error("network error");
+
+      const data = await res.json();
+
+      if (!data.results.length) {
+        alert("場所が見つかりませんでした。");
+        continue;
+      }
+
+      const result = data.results[0];
+
+      const ok = confirm(
+        `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
+      );
+      if (!ok) continue;
+
+      waypoints.push({
+        name: place,
+        lat: result.geometry.location.lat,
+        lon: result.geometry.location.lng
+      });
+
+      saveWaypoints();
+
+    } catch (e) {
+      alert(
+        "通信に失敗しました。\n" +
+        "インターネット接続を確認してください。"
+      );
+      return false;
     }
-
-    const result = data.results[0];
-
-    // 🔵 ここが重要：ユーザー入力とGoogle住所の両方を表示
-    const ok = confirm(
-      `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
-    );
-
-    if (!ok) continue;
-
-    // 🔵 保存する name は「Google住所」ではなく「ユーザー入力文字列」
-    waypoints.push({
-      name: place,
-      lat: result.geometry.location.lat,
-      lon: result.geometry.location.lng
-    });
-    saveWaypoints();
   }
 
   if (waypoints.length === 0) {
@@ -202,6 +224,7 @@ async function inputDestinations() {
 
   return true;
 }
+
 
 // --------------------------------------
 // 距離計算（Haversine）
@@ -341,11 +364,14 @@ fontToggleBtn.addEventListener("click", () => {
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
 
-  // ★ 保存データがあるか確認
+  // 保存済み目的地があるか
   if (loadWaypoints()) {
+
+    // 🔵 オフラインでも再開はOK
     const resume = confirm(
       "前回の目的地が残っています。\n続きから再開しますか？"
     );
+
     if (resume) {
       document.getElementById("startBtn").style.display = "none";
       startNavigation();
@@ -357,7 +383,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
     }
   }
 
-  // 新規入力
+  // 🔴 オフラインで新規入力は不可
   const ok = await inputDestinations();
   if (!ok) return;
 
@@ -464,6 +490,7 @@ document.getElementById("listBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
 
 
 
