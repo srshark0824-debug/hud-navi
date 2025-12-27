@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（2）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -25,11 +25,12 @@
 .hud-large {
   font-size: 1.2em;   /* ← 1.8 → 1.2 */
 }
-  .hud-large #info {
-   margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
-   font-size: 1.15em;  /* ← 1.6 → 1.15 */
-   font-weight: bold;
-   line-height: 1.4;
+  
+.hud-large #info {
+　margin-bottom: 20px;   /* ← 文字との間隔を確保 */ 
+  font-size: 1.15em;  /* ← 1.6 → 1.15 */
+  font-weight: bold;
+  line-height: 1.4;
   
   max-width: 90%;
   margin: 0 auto;/**/    /*←横幅を減らす処理 */
@@ -44,8 +45,8 @@
   margin-bottom: 12px;
   /*font-size: 1.1em;*/   /* ← 1.2 → 1.1 */
 }
-  
-.hud-large .controls {
+
+  .hud-large .controls {
   margin-top: 40px;
 }
 
@@ -75,11 +76,9 @@
   <div class="controls">
   <button id="startBtn">▶️ ナビ開始</button>
   <button id="fontToggleBtn">🔍 大文字モード</button>
-    
   <div style="margin-top:20px;">
   <button id="listBtn">📋 目的地一覧</button>
   <button id="resetBtn">♻ リセット</button>
- </div>
 </div>
 
 <div id="listView" style="display:none; margin-top:20px;"></div>
@@ -142,31 +141,19 @@ function loadWaypoints() {
   if (!saved) return false;
 
   try {
-  //const res = await fetch(url);
-  //const data = await res.json();
     waypoints = JSON.parse(saved);
     return waypoints.length > 0;
   } catch (e) {
     console.error("保存データの読み込み失敗", e);
-    //alert("オフライン中は新しい目的地を追加できません。");
-    //break;
     return false;
   }
 }
 
+
 // --------------------------------------
-// 目的地入力（複数対応・オフライン対策済）
+// 目的地入力（複数対応）
 // --------------------------------------
 async function inputDestinations() {
-
-  // 🔴 オフライン中は新規入力不可
-  if (!isOnline()) {
-    alert(
-      "現在オフラインです。\n" +
-      "新しい目的地はオンライン時のみ追加できます。"
-    );
-    return false;
-  }
 
   while (true) {
     const place = prompt(
@@ -175,46 +162,32 @@ async function inputDestinations() {
 
     if (!place) break;
 
-    const url =
-      `https://maps.googleapis.com/maps/api/geocode/json` +
-      `?address=${encodeURIComponent(place)}` +
-      `&key=${API_KEY}`;
+    // Geocode API へ問い合わせ
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-    try {
-      const res = await fetch(url);
-
-      // 通信失敗対策
-      if (!res.ok) throw new Error("network error");
-
-      const data = await res.json();
-
-      if (!data.results.length) {
-        alert("場所が見つかりませんでした。");
-        continue;
-      }
-
-      const result = data.results[0];
-
-      const ok = confirm(
-        `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
-      );
-      if (!ok) continue;
-
-      waypoints.push({
-        name: place,
-        lat: result.geometry.location.lat,
-        lon: result.geometry.location.lng
-      });
-
-      saveWaypoints();
-
-    } catch (e) {
-      alert(
-        "通信に失敗しました。\n" +
-        "インターネット接続を確認してください。"
-      );
-      return false;
+    if (!data.results.length) {
+      alert("場所が見つかりませんでした。");
+      continue;
     }
+
+    const result = data.results[0];
+
+    // 🔵 ここが重要：ユーザー入力とGoogle住所の両方を表示
+    const ok = confirm(
+      `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
+    );
+
+    if (!ok) continue;
+
+    // 🔵 保存する name は「Google住所」ではなく「ユーザー入力文字列」
+    waypoints.push({
+      name: place,
+      lat: result.geometry.location.lat,
+      lon: result.geometry.location.lng
+    });
+    saveWaypoints();
   }
 
   if (waypoints.length === 0) {
@@ -224,7 +197,6 @@ async function inputDestinations() {
 
   return true;
 }
-
 
 // --------------------------------------
 // 距離計算（Haversine）
@@ -364,14 +336,11 @@ fontToggleBtn.addEventListener("click", () => {
 document.getElementById("startBtn").addEventListener("click", async () => {
   await enableOrientation();
 
-  // 保存済み目的地があるか
+  // ★ 保存データがあるか確認
   if (loadWaypoints()) {
-
-    // 🔵 オフラインでも再開はOK
     const resume = confirm(
       "前回の目的地が残っています。\n続きから再開しますか？"
     );
-
     if (resume) {
       document.getElementById("startBtn").style.display = "none";
       startNavigation();
@@ -383,7 +352,7 @@ document.getElementById("startBtn").addEventListener("click", async () => {
     }
   }
 
-  // 🔴 オフラインで新規入力は不可
+  // 新規入力
   const ok = await inputDestinations();
   if (!ok) return;
 
@@ -490,12 +459,3 @@ document.getElementById("listBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
