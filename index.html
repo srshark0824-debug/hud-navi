@@ -27,7 +27,7 @@
 }
   
 .hud-large #info {
-　margin-bottom: 20px;   /* ← 文字との間隔を確保 */ 
+　margin-bottom: 20pxx; /* ← 文字との間隔を確保 */ 
   font-size: 1.15em;  /* ← 1.6 → 1.15 */
   font-weight: bold;
   line-height: 1.4;
@@ -73,15 +73,18 @@
   <h2>HUDナビ</h2>
   <div id="arrow"></div>
   <p id="info">目的地を設定してください。</p>
-  <div class="controls">
+<div class="controls">
   <button id="startBtn">▶️ ナビ開始</button>
   <button id="fontToggleBtn">🔍 大文字モード</button>
+
   <div style="margin-top:20px;">
-  <button id="listBtn">📋 目的地一覧</button>
-  <button id="resetBtn">♻ リセット</button>
+    <button id="listBtn">📋 目的地一覧</button>
+    <button id="resetBtn">♻ リセット</button>
+  </div>
 </div>
 
 <div id="listView" style="display:none; margin-top:20px;"></div>
+
 
 
 <script>
@@ -459,3 +462,4 @@ document.getElementById("listBtn").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
