@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（２）</title>
+<title>HUDナビ（3）</title>
 
 <style>
   body {
@@ -27,7 +27,7 @@
 }
   
 .hud-large #info {
-　margin-bottom: 20pxx; /* ← 文字との間隔を確保 */ 
+　margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
   font-size: 1.15em;  /* ← 1.6 → 1.15 */
   font-weight: bold;
   line-height: 1.4;
@@ -176,10 +176,6 @@ async function inputDestinations() {
     return false;
   }
 
-  // ↓ ここから通常処理
-}
-
-
   while (true) {
     const place = prompt(
       `目的地 ${waypoints.length + 1} を入力してください\n例：京都駅\nキャンセルで終了します。`
@@ -187,7 +183,6 @@ async function inputDestinations() {
 
     if (!place) break;
 
-    // Geocode API へ問い合わせ
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
@@ -199,19 +194,17 @@ async function inputDestinations() {
 
     const result = data.results[0];
 
-    // 🔵 ここが重要：ユーザー入力とGoogle住所の両方を表示
     const ok = confirm(
       `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
     );
-
     if (!ok) continue;
 
-    // 🔵 保存する name は「Google住所」ではなく「ユーザー入力文字列」
     waypoints.push({
-      name: place,
+      name: place,   // ← ユーザー入力文字列を保持
       lat: result.geometry.location.lat,
       lon: result.geometry.location.lng
     });
+
     saveWaypoints();
   }
 
@@ -480,9 +473,19 @@ document.getElementById("listBtn").addEventListener("click", () => {
     .then(() => console.log("Service Worker registered"))
     .catch(err => console.error("SW registration failed:", err));
 }
-
+  
+// ================================
+// 起動時オフライン判定（Safari / PWA対策）
+// ================================
+window.addEventListener("load", () => {
+  if (!navigator.onLine) {
+    window.location.replace("./offline.html");
+  }
+});
+  
 </script>
 </body>
 </html>
+
 
 
