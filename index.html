@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（2）</title>
 
 <style>
   body {
@@ -27,7 +27,7 @@
 }
   
 .hud-large #info {
-　margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
+  margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
   font-size: 1.15em;  /* ← 1.6 → 1.15 */
   font-weight: bold;
   line-height: 1.4;
@@ -103,11 +103,6 @@ let isArrivalShowing = false;   // 到着演出中フラグ
 // 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
-
-// 方位安定化バッファ
-let headingOffset = 0;
-let headingHistory = [];
-
 
 // --------------------------------------
 // ① 方位センサー許可＋安定化
@@ -554,6 +549,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
