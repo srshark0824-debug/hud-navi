@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（２）</title>
+<title>HUDナビ（1）</title>
 
 <style>
   body {
@@ -249,10 +249,8 @@ function showArrival(target) {
 }
 
 function closeArrival() {
-  document.getElementById("arrivalView").style.display = "none";
-  document.getElementById("arrow").style.display = "block";
+  hideArrivalAndNext();
 }
-
 
 // --------------------------------------
 // 距離計算（Haversine）
@@ -344,19 +342,7 @@ if (distance < 40 && acc < 30) {
 }
 
 
-  const nextName = waypoints[currentIndex + 1].name;
-
-  document.getElementById("info").innerText =
-    `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
-
-  setTimeout(() => {
-    closeArrival();
-    currentIndex++;
-    arrived = false;
-  }, 5000);
-
-  return;
-}
+   //document.getElementById("info").innerText = `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
 
 
     // 画面更新
@@ -376,13 +362,13 @@ if (distance < 40 && acc < 30) {
 // ================================
 function hideArrivalAndNext() {
   const view = document.getElementById("arrivalView");
-  if (view) view.style.display = "none";
+  view.style.display = "none";
 
   document.getElementById("arrow").style.display = "block";
 
   currentIndex++;
 
-  // 全目的地完了チェック
+  // 全目的地完了
   if (currentIndex >= waypoints.length) {
     document.getElementById("info").innerText =
       "🎉 全ての目的地に到着しました！";
@@ -390,7 +376,7 @@ function hideArrivalAndNext() {
     return;
   }
 
-  arrived = false; // ★ これが無いと次に進まない（最重要）
+  arrived = false; // ← ★最重要
 }
 
 // ================================
@@ -553,6 +539,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
