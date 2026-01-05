@@ -8,211 +8,545 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>HUDナビ（3）</title>
+
+<title>HUDナビ（１）</title>
 
 <style>
-body {
-  background: black;
-  color: rgb(0, 255, 13);
-  font-family: monospace;
-  text-align: center;
-  margin-top: 7vh;
+  body {
+    background: black;
+    color: rgb(0, 255, 13);
+    font-family: monospace;
+    text-align: center;
+    margin-top: 7vh;
+
+  }
+
+/* HUD 大文字モード（要調整） */
+.hud-large {
+  font-size: 1.2em;   /* ← 1.8 → 1.2 */
+}
+  
+.hud-large #info {
+　margin-bottom: 20px; /* ← 文字との間隔を確保 */ 
+  font-size: 1.15em;  /* ← 1.6 → 1.15 */
+  font-weight: bold;
+  line-height: 1.4;
+  
+  max-width: 90%;
+  margin: 0 auto;/**/    /*←横幅を減らす処理 */
 }
 
-.hud-large { font-size: 1.2em; }
-
-#arrow {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 20px;
-  background: url('arrow.png') no-repeat center;
-  background-size: contain;
-  transform-origin: 50% 60%;
-  transition: transform 0.3s linear;
+.hud-large h2 {
+  font-size: 1.2em;   /* ← 2.0 → 1.2 */
 }
 
-#arrivalView {
-  display:none;
+.hud-large button {
+  margin-top: 12px;      /* ボタン同士の縦間隔 */
+  margin-bottom: 12px;
+  /*font-size: 1.1em;*/   /* ← 1.2 → 1.1 */
 }
 
-#arrivalImage {
-  width:100%;
-  max-height:70vh;
-  object-fit:contain;
+  .hud-large .controls {
+  margin-top: 40px;
 }
+
+  #arrow {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+    margin-bottom: 20px;   /* ← 文字との間隔を確保 */
+    background: url('arrow.png') no-repeat center;
+    background-size: contain;
+    transform-origin: 50% 60%;
+    transition: transform 0.3s linear;
+    filter: drop-shadow(0 0 10px red);
+  }
+
+  #info {
+    margin-top: 15px;
+    white-space: pre-line;
+  }
 </style>
 </head>
 
 <body>
-<h2>HUDナビ</h2>
-<div id="arrow"></div>
-<p id="info">目的地を設定してください。</p>
-
+  <h2>HUDナビ</h2>
+  <div id="arrow"></div>
+  <p id="info">目的地を設定してください。</p>
 <div class="controls">
   <button id="startBtn">▶️ ナビ開始</button>
   <button id="fontToggleBtn">🔍 大文字モード</button>
+
   <div style="margin-top:20px;">
     <button id="listBtn">📋 目的地一覧</button>
     <button id="resetBtn">♻ リセット</button>
   </div>
-</div>
-
-<div id="arrivalView">
-  <img id="arrivalImage">
+<div id="arrivalView" style="display:none;">
+  <img id="arrivalImage" style="width:100%; max-height:70vh; object-fit:contain;">
   <p id="arrivalText"></p>
+  <button onclick="closeArrival()">続行</button>
 </div>
 
-<div id="listView" style="display:none;"></div>
+</div>
+
+<div id="listView" style="display:none; margin-top:20px;"></div>
+
+
 
 <script>
-const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY";
-
-// ================================
-// グローバル状態
-// ================================
-let waypoints = [];
-let currentIndex = 0;
+const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY"; // ←必要に応じて変更
+let waypoints = [];             // 目的地リスト
+let currentIndex = 0;           // 現在の目的地
 let arrived = false;
-let isArrivalShowing = false;
+
+// 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
 
-// ================================
-// 方位センサー
-// ================================
+// --------------------------------------
+// ① 方位センサー許可＋安定化
+// --------------------------------------
 async function enableOrientation() {
-  try {
-    if (typeof DeviceOrientationEvent?.requestPermission === "function") {
-      await DeviceOrientationEvent.requestPermission();
+  if (typeof DeviceOrientationEvent.requestPermission === "function") {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    if (permission !== "granted") {
+      alert("センサーアクセスが拒否されました。");
+      return;
     }
-  } catch(e) {
-    console.warn("方位センサー未許可");
   }
 
+  // 方位の揺れを移動平均で平滑化
   window.addEventListener("deviceorientation", e => {
-    let h = e.webkitCompassHeading ?? (e.alpha ? 360 - e.alpha : null);
-    if (h !== null) {
-      headingHistory.push(h);
+    let heading;
+
+    // iPhone専用の正確なコンパス値
+    if (e.webkitCompassHeading !== undefined) {
+      heading = e.webkitCompassHeading;
+    }
+    // その他端末
+    else if (e.alpha !== null) {
+      heading = 360 - e.alpha;
+    }
+
+    if (heading !== undefined) {
+      headingHistory.push(heading);
       if (headingHistory.length > 5) headingHistory.shift();
-      headingOffset = headingHistory.reduce((a,b)=>a+b,0)/headingHistory.length;
+      const avg = headingHistory.reduce((a, b) => a + b, 0) / headingHistory.length;
+      headingOffset = avg;
     }
   });
 }
-
 // ================================
-// 保存 / 読込
+// 目的地リストを保存
 // ================================
 function saveWaypoints() {
   localStorage.setItem("hud_waypoints", JSON.stringify(waypoints));
 }
+// ================================
+// 目的地リストを読み込む
+// ================================
 function loadWaypoints() {
-  const s = localStorage.getItem("hud_waypoints");
-  if (!s) return false;
-  waypoints = JSON.parse(s);
-  return waypoints.length > 0;
+  const saved = localStorage.getItem("hud_waypoints");
+  if (!saved) return false;
+
+  try {
+    waypoints = JSON.parse(saved);
+    return waypoints.length > 0;
+  } catch (e) {
+    console.error("保存データの読み込み失敗", e);
+    return false;
+  }
 }
 
 // ================================
-// 到着演出
+// オフライン判定（必須）
+// ================================
+function isOffline() {
+  return !navigator.onLine;
+}
+
+// オフライン時の共通処理
+function showOfflineMessage() {
+  document.getElementById("info").innerText =
+    "⚠️ オフラインです。\nネット接続後に再度お試しください。";
+}
+
+// --------------------------------------
+// 目的地入力（複数対応）
+// --------------------------------------
+async function inputDestinations() {
+
+  if (isOffline()) {
+    alert("オフラインのため目的地検索はできません。");
+    showOfflineMessage();
+    return false;
+  }
+
+  while (true) {
+    const place = prompt(
+      `目的地 ${waypoints.length + 1} を入力してください\n例：京都駅\nキャンセルで終了します。`
+    );
+
+    if (!place) break;
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.results.length) {
+      alert("場所が見つかりませんでした。");
+      continue;
+    }
+
+    const result = data.results[0];
+
+    const ok = confirm(
+      `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
+    );
+    if (!ok) continue;
+
+   const imageUrl = prompt(
+  "目的地の画像URLを入力してください（任意）\n例：https://example.com/building.jpg"
+);
+
+waypoints.push({
+  name: place,
+  lat: result.geometry.location.lat,
+  lon: result.geometry.location.lng,
+  image: imageUrl || null
+});
+saveWaypoints();
+
+  }
+
+  if (waypoints.length === 0) {
+    alert("目的地が入力されていません。");
+    return false;
+  }
+
+  return true;
+}
+
+// ================================
+// 到着時表示
 // ================================
 function showArrival(target) {
   document.getElementById("arrow").style.display = "none";
-  document.getElementById("arrivalView").style.display = "block";
-  document.getElementById("arrivalText").innerText = `📍 到着：${target.name}`;
 
+  const view = document.getElementById("arrivalView");
   const img = document.getElementById("arrivalImage");
+  const text = document.getElementById("arrivalText");
+
   if (target.image) {
     img.src = target.image;
     img.style.display = "block";
   } else {
     img.style.display = "none";
   }
+
+  text.innerText = `📍 到着しました：${target.name}`;
+  view.style.display = "block";
 }
 
+function closeArrival() {
+  hideArrivalAndNext();
+}
+
+// --------------------------------------
+// 距離計算（Haversine）
+// --------------------------------------
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2)**2 +
+            Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
+// --------------------------------------
+// 方位角計算
+// --------------------------------------
+function getBearing(lat1, lon1, lat2, lon2) {
+  const toRad = deg => deg * Math.PI/180;
+  const y = Math.sin(toRad(lon2-lon1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
+  const brng = Math.atan2(y, x);
+  return (brng * 180 / Math.PI + 360) % 360;
+}
+
+// --------------------------------------
+// ナビ開始（複数目的地対応）
+// --------------------------------------
+function startNavigation() {
+  let lastPos = null;  // for movement-based heading
+  let distancePrev = null;
+
+  navigator.geolocation.watchPosition((pos) => {
+    // 必要な値を一回だけ宣言（重複宣言を避ける）
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const acc = pos.coords.accuracy;
+
+    // ---★ 改善案C（歩行方向の利用）★---
+    if (lastPos) {
+      const moved = getDistance(lastPos.lat, lastPos.lon, lat, lon);
+      if (moved > 2) {
+        const headingMove = getBearing(lastPos.lat, lastPos.lon, lat, lon);
+        // 少し平滑化して上書き（急激なジャンプを防ぐ）
+        headingOffset = (headingOffset * 0.4) + (headingMove * 0.6);
+      }
+    }
+    lastPos = { lat, lon };
+    // ---改善案C 終了---
+
+    if (arrived) return;
+
+    const target = waypoints[currentIndex];
+
+    const bearing = getBearing(lat, lon, target.lat, target.lon);
+    let distance = getDistance(lat, lon, target.lat, target.lon);
+
+    // GPS 精度が悪いときは距離を平滑化する（飛び対策）
+    if (distancePrev !== null && acc > 30) {
+      distance = (distancePrev * 0.7) + (distance * 0.3);
+    }
+    distancePrev = distance;
+
+    // 方位補正（目的地方位 - 端末向き）
+    const correctedBearing = (bearing - headingOffset + 360) % 360;
+
+    // GPS 精度アイコン（〇 △ ✖）
+    let gpsStatus = "〇";
+    if (acc > 30) gpsStatus = "△";
+    if (acc > 100) gpsStatus = "✖";
+
+// 到着判定
+if (distance < 40 && acc < 30) {
+  arrived = true;
+  isArrivalShowing = true;
+
+  const nextName =
+    waypoints[currentIndex + 1]
+      ? waypoints[currentIndex + 1].name
+      : "なし";
+
+  document.getElementById("info").innerText =
+    `目的地に到着しました！\n\n` +
+    `次の目的地に向かいます：${nextName}\n` +
+    `5秒後に自動でナビを再開します`;
+
+  showArrival(target);
+
+  setTimeout(() => {
+    hideArrivalAndNext();
+  }, 5000);
+
+  return;
+}
+
+   //document.getElementById("info").innerText = `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
+
+   // 画面更新（※ 到着中は更新しない）
+if (!isArrivalShowing) {
+  document.getElementById("arrow").style.transform =
+    `rotate(${correctedBearing}deg)`;
+
+  document.getElementById("info").innerText =
+    `次の目的地：${target.name} (${currentIndex + 1}/${waypoints.length})\n` +
+    `距離：約${distance.toFixed(1)} m\n` +
+    `GPS精度：${gpsStatus}`;
+}
+
+  }, err => {
+    document.getElementById("info").innerText = "位置情報が取得できません。";
+  }, { enableHighAccuracy: true });
+}
+  
+// ================================
+// 到着演出終了 → 次の目的地へ自動遷移
+// ================================
 function hideArrivalAndNext() {
   document.getElementById("arrivalView").style.display = "none";
   document.getElementById("arrow").style.display = "block";
 
   currentIndex++;
-  arrived = false;
-  isArrivalShowing = false;
 
   if (currentIndex >= waypoints.length) {
-    document.getElementById("info").innerText = "🎉 全目的地に到着しました！";
+    document.getElementById("info").innerText =
+      "🎉 全ての目的地に到着しました！";
     document.getElementById("arrow").style.display = "none";
-  }
-}
-
-// ================================
-// 計算
-// ================================
-function getDistance(a,b,c,d){
-  const R=6371e3;
-  const x=(c-a)*Math.PI/180;
-  const y=(d-b)*Math.PI/180;
-  return Math.sqrt(x*x+y*y)*R;
-}
-function getBearing(a,b,c,d){
-  return (Math.atan2(d-b,c-a)*180/Math.PI+360)%360;
-}
-
-// ================================
-// ナビ開始
-// ================================
-function startNavigation() {
-  navigator.geolocation.watchPosition(pos => {
-    if (arrived) return;
-
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    const acc = pos.coords.accuracy;
-
-    const t = waypoints[currentIndex];
-    const dist = getDistance(lat,lon,t.lat,t.lon);
-    const bear = getBearing(lat,lon,t.lat,t.lon);
-    const rot = (bear - headingOffset + 360) % 360;
-
-    if (dist < 40 && acc < 30 && !arrived) {
-      arrived = true;
-      isArrivalShowing = true;
-      showArrival(t);
-      setTimeout(hideArrivalAndNext, 5000);
-      return;
-    }
-
-    if (!isArrivalShowing) {
-      document.getElementById("arrow").style.transform = `rotate(${rot}deg)`;
-      document.getElementById("info").innerText =
-        `目的地：${t.name}\n距離：約${dist.toFixed(1)}m`;
-    }
-  }, err => {
-    document.getElementById("info").innerText = "位置情報が取得できません";
-  }, { enableHighAccuracy:true });
-}
-
-// ================================
-// UI
-// ================================
-document.getElementById("startBtn").onclick = async () => {
-  await enableOrientation();
-  if (!loadWaypoints()) {
-    alert("目的地を設定してください");
     return;
   }
+
+  isArrivalShowing = false; // ★ ここで解除
+  arrived = false;
+}
+
+
+// ================================
+// HUD 大文字モード切替
+// ================================
+const body = document.body;
+const fontToggleBtn = document.getElementById("fontToggleBtn");
+
+// 初期状態（保存データから復元）
+const savedFontMode = localStorage.getItem("hud_font_mode");
+if (savedFontMode === "large") {
+  body.classList.add("hud-large");
+}
+
+// 手動切替
+fontToggleBtn.addEventListener("click", () => {
+  body.classList.toggle("hud-large");
+
+  const mode = body.classList.contains("hud-large") ? "large" : "normal";
+  localStorage.setItem("hud_font_mode", mode);
+});
+
+
+
+// --------------------------------------
+// スタートボタン
+// --------------------------------------
+document.getElementById("startBtn").addEventListener("click", async () => {
+  await enableOrientation();
+
+  // ★ 保存データがあるか確認
+  if (loadWaypoints()) {
+    const resume = confirm(
+      "前回の目的地が残っています。\n続きから再開しますか？"
+    );
+    if (resume) {
+      document.getElementById("startBtn").style.display = "none";
+      startNavigation();
+      return;
+    } else {
+      localStorage.removeItem("hud_waypoints");
+      waypoints = [];
+      currentIndex = 0;
+    }
+  }
+
+  // 新規入力
+  const ok = await inputDestinations();
+  if (!ok) return;
+
   document.getElementById("startBtn").style.display = "none";
   startNavigation();
-};
+});
 
-document.getElementById("resetBtn").onclick = () => {
-  localStorage.clear();
-  location.reload();
-};
+  // ================================
+// リセット処理
+// ================================
+document.getElementById("resetBtn").addEventListener("click", () => {
+  const ok = confirm("保存された目的地とナビ状態を全て削除しますか？");
+  if (!ok) return;
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js");
+  localStorage.removeItem("hud_waypoints");
+  waypoints = [];
+  currentIndex = 0;
+  arrived = false;
+
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("info").innerText = "リセットしました。";
+  document.getElementById("arrow").style.display = "block";
+  document.getElementById("startBtn").style.display = "inline";
+});
+
+// ================================
+// 目的地一覧を描画
+// ================================
+function renderWaypointList() {
+  const list = document.getElementById("listView");
+  list.innerHTML = "<h3>目的地一覧</h3>";
+
+  waypoints.forEach((wp, index) => {
+    const item = document.createElement("div");
+    item.style.margin = "10px";
+    item.style.border = "1px solid lime";
+    item.style.padding = "5px";
+
+    item.innerHTML = `
+      <div>${index + 1}. ${wp.name}</div>
+      <button onclick="moveUp(${index})">↑</button>
+      <button onclick="moveDown(${index})">↓</button>
+      <button onclick="removeWaypoint(${index})">削除</button>
+    `;
+    list.appendChild(item);
+  });
+
+  if (waypoints.length === 0) {
+    list.innerHTML += "<p>目的地がありません。</p>";
+  }
 }
+
+//並び替え処理
+function moveUp(index) {
+  if (index === 0) return;
+  [waypoints[index - 1], waypoints[index]] =
+    [waypoints[index], waypoints[index - 1]];
+  saveWaypoints();
+  renderWaypointList();
+}
+
+function moveDown(index) {
+  if (index === waypoints.length - 1) return;
+  [waypoints[index + 1], waypoints[index]] =
+    [waypoints[index], waypoints[index + 1]];
+  saveWaypoints();
+  renderWaypointList();
+}
+
+//削除処理
+function removeWaypoint(index) {
+  const ok = confirm(`「${waypoints[index].name}」を削除しますか？`);
+  if (!ok) return;
+
+  waypoints.splice(index, 1);
+
+  if (currentIndex >= waypoints.length) {
+    currentIndex = waypoints.length - 1;
+  }
+  if (currentIndex < 0) currentIndex = 0;
+
+  saveWaypoints();
+  renderWaypointList();
+}
+
+//一覧ボタンの動作
+document.getElementById("listBtn").addEventListener("click", () => {
+  const list = document.getElementById("listView");
+  const visible = list.style.display === "block";
+
+  list.style.display = visible ? "none" : "block";
+
+  if (!visible) {
+    renderWaypointList();
+  }
+});
+
+  if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(() => console.log("Service Worker registered"))
+    .catch(err => console.error("SW registration failed:", err));
+}
+  
+// ================================
+// 起動時オフライン判定（Safari / PWA対策）
+// ================================
+window.addEventListener("load", () => {
+  if (!navigator.onLine) {
+    showOfflineMessage();
+  }
+});
+  
 </script>
 </body>
 </html>
-
-
