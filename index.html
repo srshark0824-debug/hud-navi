@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（3）</title>
+<title>HUDナビ（１）</title>
 
 <style>
   body {
@@ -81,6 +81,12 @@
     <button id="listBtn">📋 目的地一覧</button>
     <button id="resetBtn">♻ リセット</button>
   </div>
+<div id="arrivalView" style="display:none;">
+  <img id="arrivalImage" style="width:100%; max-height:70vh; object-fit:contain;">
+  <p id="arrivalText"></p>
+  <button onclick="closeArrival()">続行</button>
+</div>
+
 </div>
 
 <div id="listView" style="display:none; margin-top:20px;"></div>
@@ -199,13 +205,18 @@ async function inputDestinations() {
     );
     if (!ok) continue;
 
-    waypoints.push({
-      name: place,   // ← ユーザー入力文字列を保持
-      lat: result.geometry.location.lat,
-      lon: result.geometry.location.lng
-    });
+   const imageUrl = prompt(
+  "目的地の画像URLを入力してください（任意）\n例：https://example.com/building.jpg"
+);
 
-    saveWaypoints();
+waypoints.push({
+  name: place,
+  lat: result.geometry.location.lat,
+  lon: result.geometry.location.lng,
+  image: imageUrl || null
+});
+saveWaypoints();
+
   }
 
   if (waypoints.length === 0) {
@@ -215,6 +226,33 @@ async function inputDestinations() {
 
   return true;
 }
+
+// ================================
+// 到着時表示
+// ================================
+function showArrival(target) {
+  document.getElementById("arrow").style.display = "none";
+
+  const view = document.getElementById("arrivalView");
+  const img = document.getElementById("arrivalImage");
+  const text = document.getElementById("arrivalText");
+
+  if (target.image) {
+    img.src = target.image;
+    img.style.display = "block";
+  } else {
+    img.style.display = "none";
+  }
+
+  text.innerText = `📍 到着しました：${target.name}`;
+  view.style.display = "block";
+}
+
+function closeArrival() {
+  document.getElementById("arrivalView").style.display = "none";
+  document.getElementById("arrow").style.display = "block";
+}
+
 
 // --------------------------------------
 // 距離計算（Haversine）
@@ -291,28 +329,33 @@ function startNavigation() {
     if (acc > 30) gpsStatus = "△";
     if (acc > 100) gpsStatus = "✖";
 
-    // 到着判定
-    if (distance < 40 && acc < 30) {
-      const nextName = (currentIndex + 1 < waypoints.length) ? waypoints[currentIndex + 1].name : null;
-      if (!nextName) {
-        arrived = true;
-        document.getElementById("info").innerText = "🎉 全ての目的地に到着しました！";
-        document.getElementById("arrow").style.display = "none";
-        return;
-      }
+// 到着判定
+if (distance < 40 && acc < 30) {
 
-      document.getElementById("info").innerText =
-        `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
+  arrived = true;
+  showArrival(target);
 
-      arrived = true;
+  const hasNext = currentIndex + 1 < waypoints.length;
 
-      setTimeout(() => {
-        currentIndex++;
-        arrived = false;
-      }, 5000);
+  if (!hasNext) {
+    // 最終目的地
+    return;
+  }
 
-      return;
-    }
+  const nextName = waypoints[currentIndex + 1].name;
+
+  document.getElementById("info").innerText =
+    `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
+
+  setTimeout(() => {
+    closeArrival();
+    currentIndex++;
+    arrived = false;
+  }, 5000);
+
+  return;
+}
+
 
     // 画面更新
     document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
@@ -479,13 +522,14 @@ document.getElementById("listBtn").addEventListener("click", () => {
 // ================================
 window.addEventListener("load", () => {
   if (!navigator.onLine) {
-    window.location.replace("./offline.html");
+    showOfflineMessage();
   }
 });
   
 </script>
 </body>
 </html>
+
 
 
 
