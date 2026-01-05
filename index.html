@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（３）</title>
+<title>HUDナビ（１）</title>
 
 <style>
   body {
@@ -98,15 +98,16 @@ const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY"; // ←必要に応じ
 let waypoints = [];             // 目的地リスト
 let currentIndex = 0;           // 現在の目的地
 let arrived = false;
+let isArrivalShowing = false;   // 到着演出中フラグ
 
 // 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
 
-let waypoints = [];
-let currentIndex = 0;
-let arrived = false;
-let isArrivalShowing = false; // ★ 追加（必須）
+// 方位安定化バッファ
+let headingOffset = 0;
+let headingHistory = [];
+
 
 // --------------------------------------
 // ① 方位センサー許可＋安定化
@@ -553,5 +554,6 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
