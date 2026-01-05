@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（1）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -330,27 +330,39 @@ function startNavigation() {
 // 到着判定
 if (distance < 40 && acc < 30) {
   arrived = true;
+  isArrivalShowing = true;
+
+  const nextName =
+    waypoints[currentIndex + 1]
+      ? waypoints[currentIndex + 1].name
+      : "なし";
+
+  document.getElementById("info").innerText =
+    `目的地に到着しました！\n\n` +
+    `次の目的地に向かいます：${nextName}\n` +
+    `5秒後に自動でナビを再開します`;
 
   showArrival(target);
 
-  // ★ 自動で次へ進む処理を追加
   setTimeout(() => {
     hideArrivalAndNext();
-  }, 5000); // ← 表示時間（5秒）
+  }, 5000);
 
   return;
 }
 
-
    //document.getElementById("info").innerText = `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
 
+   // 画面更新（※ 到着中は更新しない）
+if (!isArrivalShowing) {
+  document.getElementById("arrow").style.transform =
+    `rotate(${correctedBearing}deg)`;
 
-    // 画面更新
-    document.getElementById("arrow").style.transform = `rotate(${correctedBearing}deg)`;
-    document.getElementById("info").innerText =
-      `次の目的地：${target.name} (${currentIndex+1}/${waypoints.length})\n` +
-      `距離：約${distance.toFixed(1)} m\n` +
-      `GPS精度：${gpsStatus}`;
+  document.getElementById("info").innerText =
+    `次の目的地：${target.name} (${currentIndex + 1}/${waypoints.length})\n` +
+    `距離：約${distance.toFixed(1)} m\n` +
+    `GPS精度：${gpsStatus}`;
+}
 
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
@@ -361,14 +373,11 @@ if (distance < 40 && acc < 30) {
 // 到着演出終了 → 次の目的地へ自動遷移
 // ================================
 function hideArrivalAndNext() {
-  const view = document.getElementById("arrivalView");
-  view.style.display = "none";
-
+  document.getElementById("arrivalView").style.display = "none";
   document.getElementById("arrow").style.display = "block";
 
   currentIndex++;
 
-  // 全目的地完了
   if (currentIndex >= waypoints.length) {
     document.getElementById("info").innerText =
       "🎉 全ての目的地に到着しました！";
@@ -376,8 +385,10 @@ function hideArrivalAndNext() {
     return;
   }
 
-  arrived = false; // ← ★最重要
+  isArrivalShowing = false; // ★ ここで解除
+  arrived = false;
 }
+
 
 // ================================
 // HUD 大文字モード切替
@@ -539,6 +550,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
