@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -110,10 +110,9 @@ async function enableOrientation() {
   if (typeof DeviceOrientationEvent.requestPermission === "function") {
     const permission = await DeviceOrientationEvent.requestPermission();
     if (permission !== "granted") {
-      alert("センサーアクセスが拒否されました。");
-      return;
-    }
+  alert("センサーは使用できませんが、ナビは続行します。");
   }
+ }
 
   // 方位の揺れを移動平均で平滑化
   window.addEventListener("deviceorientation", e => {
@@ -328,7 +327,7 @@ function startNavigation() {
     if (acc > 100) gpsStatus = "✖";
 
 // 到着判定
-if (distance < 40 && acc < 30) {
+if (distance < 40 && acc < 30 && !arrived) {
   arrived = true;
   isArrivalShowing = true;
 
@@ -352,6 +351,10 @@ if (distance < 40 && acc < 30) {
 }
 
    //document.getElementById("info").innerText = `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
+let waypoints = [];
+let currentIndex = 0;
+let arrived = false;
+let isArrivalShowing = false; // ★ 追加（必須）
 
    // 画面更新（※ 到着中は更新しない）
 if (!isArrivalShowing) {
@@ -378,16 +381,17 @@ function hideArrivalAndNext() {
 
   currentIndex++;
 
+  isArrivalShowing = false;
+  arrived = false;
+
   if (currentIndex >= waypoints.length) {
     document.getElementById("info").innerText =
       "🎉 全ての目的地に到着しました！";
     document.getElementById("arrow").style.display = "none";
     return;
   }
-
-  isArrivalShowing = false; // ★ ここで解除
-  arrived = false;
 }
+
 
 
 // ================================
@@ -550,3 +554,4 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
