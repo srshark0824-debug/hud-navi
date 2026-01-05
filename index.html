@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（２）</title>
+<title>HUDナビ（３）</title>
 
 <style>
   body {
@@ -102,6 +102,11 @@ let arrived = false;
 // 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
+
+let waypoints = [];
+let currentIndex = 0;
+let arrived = false;
+let isArrivalShowing = false; // ★ 追加（必須）
 
 // --------------------------------------
 // ① 方位センサー許可＋安定化
@@ -351,10 +356,6 @@ if (distance < 40 && acc < 30 && !arrived) {
 }
 
    //document.getElementById("info").innerText = `目的地に到着しました！\n\n次の目的地に向かいます：${nextName}\n5秒後に自動でナビを再開します…`;
-let waypoints = [];
-let currentIndex = 0;
-let arrived = false;
-let isArrivalShowing = false; // ★ 追加（必須）
 
    // 画面更新（※ 到着中は更新しない）
 if (!isArrivalShowing) {
@@ -391,8 +392,6 @@ function hideArrivalAndNext() {
     return;
   }
 }
-
-
 
 // ================================
 // HUD 大文字モード切替
@@ -554,4 +553,5 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
