@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -331,16 +331,18 @@ function startNavigation() {
 
 // 到着判定
 if (distance < 40 && acc < 30) {
-
   arrived = true;
+
   showArrival(target);
 
-  const hasNext = currentIndex + 1 < waypoints.length;
+  // ★ 自動で次へ進む処理を追加
+  setTimeout(() => {
+    hideArrivalAndNext();
+  }, 5000); // ← 表示時間（5秒）
 
-  if (!hasNext) {
-    // 最終目的地
-    return;
-  }
+  return;
+}
+
 
   const nextName = waypoints[currentIndex + 1].name;
 
@@ -367,6 +369,28 @@ if (distance < 40 && acc < 30) {
   }, err => {
     document.getElementById("info").innerText = "位置情報が取得できません。";
   }, { enableHighAccuracy: true });
+}
+  
+// ================================
+// 到着演出終了 → 次の目的地へ自動遷移
+// ================================
+function hideArrivalAndNext() {
+  const view = document.getElementById("arrivalView");
+  if (view) view.style.display = "none";
+
+  document.getElementById("arrow").style.display = "block";
+
+  currentIndex++;
+
+  // 全目的地完了チェック
+  if (currentIndex >= waypoints.length) {
+    document.getElementById("info").innerText =
+      "🎉 全ての目的地に到着しました！";
+    document.getElementById("arrow").style.display = "none";
+    return;
+  }
+
+  arrived = false; // ★ これが無いと次に進まない（最重要）
 }
 
 // ================================
@@ -529,6 +553,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
