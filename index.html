@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（3）</title>
+<title>HUDナビ（１）</title>
 
 <style>
   body {
@@ -99,6 +99,11 @@ let waypoints = [];             // 目的地リスト
 let currentIndex = 0;           // 現在の目的地
 let arrived = false;
 
+let waypoints = [];
+let currentIndex = 0;
+let arrived = false;
+let isArrivalShowing = false; // ← ★追加
+  
 // 方位安定化バッファ
 let headingOffset = 0;
 let headingHistory = [];
@@ -385,8 +390,9 @@ function hideArrivalAndNext() {
     return;
   }
 
-  isArrivalShowing = false; // ★ ここで解除
-  arrived = false;
+isArrivalShowing = false;
+arrived = false;
+
 }
 
 
@@ -550,12 +556,4 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
 
