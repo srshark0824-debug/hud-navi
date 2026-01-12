@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 
-<title>HUDナビ（１）</title>
+<title>HUDナビ（２）</title>
 
 <style>
   body {
@@ -98,7 +98,8 @@
 <div id="listView" style="display:none; margin-top:20px;"></div>
 
 
-
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+  
 <script>
 const API_KEY = "AIzaSyDHRitaxXlwj13-dz9zPKpwvhGZorwzgRY"; // ←必要に応じて変更
 let waypoints = [];             // 目的地リスト
@@ -195,20 +196,43 @@ async function inputDestinations() {
 
     if (!place) break;
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place)}&key=${API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
+// Promiseでラップして、awaitできるようにする関数を作っておくと便利です
+function geocodeAddress(address) {
+  const geocoder = new google.maps.Geocoder();
+  return new Promise((resolve, reject) => {
+    geocoder.geocode({ 'address': address }, (results, status) => {
+      if (status === 'OK') {
+        resolve(results);
+      } else {
+        // 結果が見つからない、またはエラーの場合
+        resolve([]); 
+      }
+    });
+  });
+}
 
-    if (!data.results.length) {
+// inputDestinations関数の中身を書き換え
+// （前後のプロンプト処理はそのままで、fetchの部分だけ差し替え）
+// ---------------------------------------------------
+    // const url = ... (削除)
+    // const res = ... (削除)
+    // const data = ... (削除)
+    
+    // ★ここを書き換え
+    const results = await geocodeAddress(place);
+
+    if (!results.length) {
       alert("場所が見つかりませんでした。");
       continue;
     }
 
-    const result = data.results[0];
+    const result = results[0]; // data.results[0] ではなく results[0] になります
 
+    // ※ formatted_address などのプロパティ名は同じなので、以降のコードはそのままで動くはずです
     const ok = confirm(
       `「${place}（推定：${result.formatted_address}）」でよろしいですか？`
     );
+// ---------------------------------------------------
     if (!ok) continue;
 
    const imageUrl = prompt(
@@ -555,6 +579,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
