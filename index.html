@@ -241,8 +241,8 @@ function geocodeAddress(address) {
 
 waypoints.push({
   name: place,
-  lat: result.geometry.location.lat,
-  lon: result.geometry.location.lng,
+  lat: result.geometry.location.lat(), // ← () をつけて関数として実行する
+  lon: result.geometry.location.lng(), // ← () をつける
   image: imageUrl || null
 });
 saveWaypoints();
@@ -579,6 +579,7 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
+
 
 
 
