@@ -65,6 +65,10 @@ self.addEventListener("activate", event => {
 // fetch: キャッシュ優先 + オフライン対応
 // ================================
 self.addEventListener("fetch", event => {
+  // http または https 以外のリクエスト（拡張機能など）は無視して、何もしない
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
   // GET 以外は触らない（POST 等）
   if (event.request.method !== "GET") return;
 
